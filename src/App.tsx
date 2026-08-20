@@ -21,7 +21,6 @@ import { EmployeeReportHero } from './components/EmployeeReportHero';
 import { SummaryCard } from './components/SummaryCard';
 import { DayTable } from './components/DayTable';
 import { StickyNotesModal } from './components/StickyNotesModal';
-import { PowerAutomateModal } from './components/PowerAutomateModal';
 import { EmployeeDirectoryModal } from './components/EmployeeDirectoryModal';
 
 export default function App() {
@@ -260,7 +259,6 @@ export default function App() {
 
   // Modals state
   const [isStickyNotesOpen, setIsStickyNotesOpen] = useState(false);
-  const [isPowerAutomateOpen, setIsPowerAutomateOpen] = useState(false);
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
 
   // Reset session to allow user to put their SAP, name, or choose from directory and paste Teams data
@@ -584,7 +582,6 @@ export default function App() {
             missingReasonsCount={missingReasonsList.length}
             unresolvedAbsencesCount={unresolvedAbsentList.length}
             onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
-            onOpenPowerAutomate={() => setIsPowerAutomateOpen(true)}
             onOpenDirectory={() => setIsDirectoryOpen(true)}
           />
         </div>
@@ -647,14 +644,6 @@ export default function App() {
         onApplyReasons={handleApplyStickyReasons}
         overtimeDates={overtimeList.map((ot) => ot.row.date)}
         existingReasons={dayReasons}
-      />
-
-      {/* Power Automate Setup & 14th of Month Flow Modal */}
-      <PowerAutomateModal
-        isOpen={isPowerAutomateOpen}
-        onClose={() => setIsPowerAutomateOpen(false)}
-        employeeId={exportSettings.employeeId}
-        employeeName={exportSettings.name}
       />
     </div>
   );

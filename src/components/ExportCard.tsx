@@ -6,7 +6,6 @@ import {
   Hash,
   Clock,
   StickyNote,
-  Bot,
   AlertCircle,
   CheckCircle,
   Users,
@@ -32,7 +31,6 @@ interface ExportCardProps {
   missingReasonsCount: number;
   unresolvedAbsencesCount?: number;
   onOpenStickyNotes: () => void;
-  onOpenPowerAutomate: () => void;
   onOpenDirectory?: () => void;
 }
 
@@ -44,7 +42,6 @@ export const ExportCard: React.FC<ExportCardProps> = ({
   missingReasonsCount,
   unresolvedAbsencesCount = 0,
   onOpenStickyNotes,
-  onOpenPowerAutomate,
   onOpenDirectory,
 }) => {
   const [autoMatchedName, setAutoMatchedName] = useState<string | null>(null);
@@ -231,16 +228,6 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             >
               <StickyNote className="w-3.5 h-3.5 text-amber-400" />
               <span>Sticky Notes</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenPowerAutomate}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-muted/60 hover:bg-muted text-foreground border border-border transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
-              title="Power Automate scheduled export"
-            >
-              <Bot className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Power Automate</span>
             </button>
           </div>
         </div>
