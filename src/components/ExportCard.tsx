@@ -15,6 +15,11 @@ import {
   AlertTriangle,
   Database,
   Check,
+  CheckSquare,
+  BarChart3,
+  Lock,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   lookupEmployeeById,
@@ -27,6 +32,8 @@ interface ExportCardProps {
   exportSettings: ExportSettings;
   onChangeSettings: (settings: ExportSettings) => void;
   onExport: () => void;
+  onSubmitToTeamLeader?: () => void;
+  onNavigateTab?: (tab: 'team_leader_approvals' | 'manager_overview' | 'employee_ledger') => void;
   overtimeCount: number;
   missingReasonsCount: number;
   unresolvedAbsencesCount?: number;
@@ -38,6 +45,8 @@ export const ExportCard: React.FC<ExportCardProps> = ({
   exportSettings,
   onChangeSettings,
   onExport,
+  onSubmitToTeamLeader,
+  onNavigateTab,
   overtimeCount,
   missingReasonsCount,
   unresolvedAbsencesCount = 0,
@@ -159,11 +168,23 @@ export const ExportCard: React.FC<ExportCardProps> = ({
     onChangeSettings({ ...exportSettings, [key]: value });
   };
 
+  const isSapValid = Boolean(
+    exportSettings.employeeId?.trim() &&
+    exportSettings.employeeId.trim().toLowerCase() !== 'employee id' &&
+    exportSettings.employeeId.trim().toLowerCase() !== 'sap id'
+  );
+
+  const isNameValid = Boolean(
+    exportSettings.name?.trim() &&
+    exportSettings.name.trim().toLowerCase() !== 'employee name' &&
+    exportSettings.name.trim().toLowerCase() !== 'no employee name set'
+  );
+
   const hasMissingItems =
     missingReasonsCount > 0 ||
     unresolvedAbsencesCount > 0 ||
-    !exportSettings.name.trim() ||
-    !exportSettings.employeeId.trim();
+    !isSapValid ||
+    !isNameValid;
 
   // Filter suggestions based on typed ID
   const suggestions = directoryList.filter((emp) => {
@@ -176,7 +197,45 @@ export const ExportCard: React.FC<ExportCardProps> = ({
   });
 
   return (
-    <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 shadow-sm flex flex-col justify-between gap-5">
+    <div className="bg-card border-2 border-primary/40 rounded-3xl p-6 sm:p-7 shadow-lg flex flex-col justify-between gap-5">
+      {/* DIRECT ACCESS PORTAL BUTTONS (TEAM LEADER & MANAGER) */}
+      {onNavigateTab && (
+        <div className="p-4 bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-teal-500/15 border-2 border-amber-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+            </span>
+            <div>
+              <span className="text-xs font-mono font-extrabold uppercase tracking-wide text-foreground">
+                PORTAL SELECTOR (CLICK TO VIEW):
+              </span>
+              <p className="text-[11px] font-mono text-muted-foreground">
+                Jump directly into Team Leader Review or Manager Matrix
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => onNavigateTab('team_leader_approvals')}
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-black shadow-md shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ring-2 ring-amber-500/50"
+            >
+              <CheckSquare className="w-4 h-4 text-black" />
+              <span>👉 OPEN TAB 2: TEAM LEADER VIEW</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('manager_overview')}
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ring-2 ring-indigo-500/50"
+            >
+              <BarChart3 className="w-4 h-4 text-white" />
+              <span>👉 OPEN TAB 3: MANAGER VIEW</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Card Header & Quick Tools */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-border/70">
@@ -229,6 +288,20 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               <StickyNote className="w-3.5 h-3.5 text-amber-400" />
               <span>Sticky Notes</span>
             </button>
+          </div>
+        </div>
+
+        {/* Security & Data Ownership Notice */}
+        <div className="mb-4 p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between gap-2.5 text-[11px] font-mono text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>
+              <strong className="text-foreground">Security &amp; Privacy Lock:</strong> Timesheet punch records are bound strictly to this employee. Changing the SAP ID or Name wipes previous ledger data.
+            </span>
+          </div>
+          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20 shrink-0">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Encrypted Session</span>
           </div>
         </div>
 
@@ -417,43 +490,61 @@ export const ExportCard: React.FC<ExportCardProps> = ({
         {/* Verification Status Banner */}
         <div
           className={`mt-4 p-4 rounded-2xl border transition-all text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-            missingReasonsCount > 0 || unresolvedAbsencesCount > 0
-              ? 'bg-amber-500/10 border-amber-500/30'
+            !exportSettings.employeeId.trim() || !exportSettings.name.trim()
+              ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+              : unresolvedAbsencesCount > 0
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              : missingReasonsCount > 0
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
               : overtimeCount > 0
-              ? 'bg-emerald-500/10 border-emerald-500/30'
-              : 'bg-muted/30 border-border'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-muted/30 border-border text-muted-foreground'
           }`}
         >
-          <div className="flex items-center gap-2.5">
-            {unresolvedAbsencesCount > 0 ? (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {!exportSettings.employeeId.trim() ? (
+              <>
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span className="font-bold text-rose-300">
+                  ⛔ SAP / Employee ID is strictly mandatory: Please enter your SAP ID to enable Excel export.
+                </span>
+              </>
+            ) : !exportSettings.name.trim() ? (
+              <>
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span className="font-bold text-rose-300">
+                  ⛔ Employee Name is strictly mandatory: Please enter your full name to enable Excel export.
+                </span>
+              </>
+            ) : unresolvedAbsencesCount > 0 ? (
               <>
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span className="text-rose-300 font-semibold">
+                <span className="font-semibold text-rose-300">
                   ⚠️ Checkpoint Required: {unresolvedAbsencesCount} unexcused absence {unresolvedAbsencesCount === 1 ? 'day needs' : 'days need'} an excuse checkpoint verified before Excel export.
                 </span>
               </>
             ) : missingReasonsCount > 0 ? (
               <>
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-amber-300 font-semibold">
+                <span className="font-semibold text-amber-300">
                   ⚠️ Overtime Reason Required: {missingReasonsCount} {missingReasonsCount === 1 ? 'day is' : 'days are'} missing a reason!
                 </span>
               </>
             ) : overtimeCount > 0 ? (
               <>
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-emerald-300 font-semibold">
-                  ✓ All checkpoints and {overtimeCount} overtime reasons verified and filled. Ready to export!
+                <span className="font-semibold text-emerald-300">
+                  ✓ SAP #{exportSettings.employeeId}, {exportSettings.name} &amp; {overtimeCount} overtime reasons verified. Ready to export!
                 </span>
               </>
             ) : (
-              <span className="text-muted-foreground">
+              <span>
                 No overtime days detected in the current ledger.
               </span>
             )}
           </div>
 
-          {missingReasonsCount > 0 && (
+          {missingReasonsCount > 0 && exportSettings.employeeId.trim() && exportSettings.name.trim() && (
             <button
               type="button"
               onClick={onOpenStickyNotes}
@@ -465,26 +556,85 @@ export const ExportCard: React.FC<ExportCardProps> = ({
         </div>
       </div>
 
-      {/* Main Export Action Button */}
-      <div className="pt-2">
+      {/* Main Action Buttons Grid */}
+      <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {onSubmitToTeamLeader && (
+          <button
+            type="button"
+            disabled={!isSapValid || !isNameValid || hasMissingItems}
+            onClick={onSubmitToTeamLeader}
+            className={`w-full py-4 px-5 font-mono text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
+              !isSapValid || !isNameValid
+                ? 'bg-muted/70 text-muted-foreground border-2 border-dashed border-border cursor-not-allowed opacity-60'
+                : hasMissingItems
+                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20 active:scale-[0.99] cursor-pointer'
+                : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 active:scale-[0.99] cursor-pointer'
+            }`}
+          >
+            {!isSapValid || !isNameValid ? (
+              <Lock className="w-5 h-5 shrink-0 text-muted-foreground" />
+            ) : (
+              <CheckCircle className="w-5 h-5 shrink-0" />
+            )}
+            <span className="truncate">
+              {!isSapValid
+                ? '🔒 SAP ID Required to Submit'
+                : !isNameValid
+                ? '🔒 Name Required to Submit'
+                : hasMissingItems
+                ? `Complete Missing Items (${missingReasonsCount + unresolvedAbsencesCount})`
+                : `Submit to Team Leader (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
+            </span>
+          </button>
+        )}
+
         <button
           type="button"
-          onClick={onExport}
-          className={`w-full py-4 px-6 font-mono text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer ${
-            hasMissingItems
-              ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20'
-              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-          }`}
+          disabled={!isSapValid || !isNameValid || hasMissingItems || overtimeCount === 0}
+          onClick={() => {
+            if (!isSapValid) {
+              alert('⛔ EXPORT CANCELLED: SAP / Employee ID is strictly mandatory. Please enter your SAP ID first.');
+              return;
+            }
+            if (!isNameValid) {
+              alert('⛔ EXPORT CANCELLED: Full Employee Name is strictly mandatory. Please enter your name first.');
+              return;
+            }
+            if (hasMissingItems) {
+              alert('⛔ EXPORT CANCELLED: All overtime reasons and absence checkpoints must be completed before exporting to Excel.');
+              return;
+            }
+            if (overtimeCount === 0) {
+              alert('⛔ EXPORT CANCELLED: No overtime records found in the current punch ledger.');
+              return;
+            }
+            onExport();
+          }}
+          className={`w-full py-4 px-5 font-mono text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
+            !isSapValid || !isNameValid
+              ? 'bg-rose-500/10 text-rose-300 border-2 border-dashed border-rose-500/40 cursor-not-allowed opacity-75'
+              : hasMissingItems
+              ? 'bg-muted/80 text-muted-foreground border-2 border-dashed border-amber-500/40 cursor-not-allowed opacity-75'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20 active:scale-[0.99] cursor-pointer'
+          } ${!onSubmitToTeamLeader ? 'sm:col-span-2' : ''}`}
         >
-          <FileSpreadsheet className="w-5 h-5 shrink-0" />
+          {!isSapValid || !isNameValid ? (
+            <Lock className="w-5 h-5 shrink-0 text-rose-400" />
+          ) : hasMissingItems ? (
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+          ) : (
+            <FileSpreadsheet className="w-5 h-5 shrink-0" />
+          )}
           <span className="truncate">
-            {unresolvedAbsencesCount > 0
-              ? `Verify ${unresolvedAbsencesCount} Absence Checkpoint${unresolvedAbsencesCount === 1 ? '' : 's'} & Export Excel`
+            {!isSapValid
+              ? '🔒 SAP ID Mandatory for Excel'
+              : !isNameValid
+              ? '🔒 Name Mandatory for Excel'
               : missingReasonsCount > 0
-              ? `Fill Reasons (${missingReasonsCount}) & Export Excel Ledger`
-              : !exportSettings.name.trim() || !exportSettings.employeeId.trim()
-              ? 'Complete SAP ID & Name to Export'
-              : `Export Overtime to Excel Ledger (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
+              ? `⚠️ Fill ${missingReasonsCount} Reason(s) for Excel`
+              : unresolvedAbsencesCount > 0
+              ? '⚠️ Resolve Absence Checkpoint'
+              : `Export Excel Ledger (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
           </span>
         </button>
       </div>

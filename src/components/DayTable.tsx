@@ -200,13 +200,20 @@ export const DayTable: React.FC<DayTableProps> = ({
 
                   {/* Day */}
                   <td className="py-3.5 px-3 whitespace-nowrap">
-                    <span
-                      className={`font-mono text-xs uppercase tracking-wider font-semibold ${
-                        isWeekendCat ? 'text-zinc-500' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {dayLabel}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`font-mono text-xs uppercase tracking-wider font-semibold ${
+                          isWeekendCat ? 'text-zinc-500' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {dayLabel}
+                      </span>
+                      {dayLabel.toLowerCase() === 'tue' && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20" title="Tuesday standard shift ends at 4:00 PM (16:00)">
+                          4 PM
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Check-In / Check-Out */}

@@ -51,19 +51,20 @@ export function formatWeekendNames(weekendDays: number[]): string {
   return names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
 }
 
+// Sunday is now a standard weekend along with Friday and Saturday by default: [0, 5, 6] or [0, 5]
 export function weekdayOf(
   dateStr: string,
-  customWeekendDays: number[] = [5, 6]
-): { label: string; isWeekend: boolean } {
+  customWeekendDays: number[] = [0, 5, 6] // Default: Sunday (0), Friday (5), Saturday (6)
+): { label: string; isWeekend: boolean; dayIndex: number } {
   const [y, m, d] = dateStr.split('.').map(Number);
-  if (!y || !m || !d) return { label: '', isWeekend: false };
+  if (!y || !m || !d) return { label: '', isWeekend: false, dayIndex: -1 };
   const dt = new Date(y, m - 1, d);
   const dow = dt.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
   const label = dt.toLocaleDateString('en-US', { weekday: 'short' });
 
   const isWeekend = customWeekendDays.includes(dow);
 
-  return { label, isWeekend };
+  return { label, isWeekend, dayIndex: dow };
 }
 
 export function weekdayFullOf(dateStr: string): string {
@@ -144,20 +145,34 @@ export function classifyDay(row: PunchRow, rules: RuleSettings): DayClassificati
   const reasons: string[] = [];
   let overtimeMin = 0;
 
+  // Determine standard shift end time for this specific day:
+  // Tuesday early leaving rule: Tuesday shift ends at 16:00 (4:00 PM)
+  const { dayIndex } = weekdayOf(row.date, rules.weekendDays || [0, 5, 6]);
+  const isTuesday = dayIndex === 2;
+  const effectiveShiftEnd = (isTuesday && rules.tuesdayEarlyShift) 
+    ? (rules.tuesdayShiftEnd || '16:00') 
+    : rules.timeVal;
+
   if (rules.timeOn) {
-    const thresholdMin = toMinutes(rules.timeVal + ':00');
+    const thresholdMin = toMinutes(effectiveShiftEnd + ':00');
     if (endMin > thresholdMin) {
       const over = endMin - thresholdMin;
-      reasons.push(`checked out ${fmtHours(over)} after ${rules.timeVal}`);
+      if (isTuesday && rules.tuesdayEarlyShift) {
+        reasons.push(`checked out ${fmtHours(over)} after Tuesday 4:00 PM cutoff`);
+      } else {
+        reasons.push(`checked out ${fmtHours(over)} after ${rules.timeVal}`);
+      }
       overtimeMin = Math.max(overtimeMin, over);
     }
   }
 
   if (rules.hoursOn) {
-    const thresholdMin = rules.hoursVal * 60;
+    // If Tuesday and early shift, standard working hours is 7h instead of 8h (or as configured)
+    const standardHours = isTuesday && rules.tuesdayEarlyShift ? Math.max(1, rules.hoursVal - 1) : rules.hoursVal;
+    const thresholdMin = standardHours * 60;
     if (workedMin > thresholdMin) {
       const over = workedMin - thresholdMin;
-      reasons.push(`${fmtHours(over)} past the ${rules.hoursVal}h day`);
+      reasons.push(`${fmtHours(over)} past the ${standardHours}h workday`);
       overtimeMin = Math.max(overtimeMin, over);
     }
   }
@@ -188,11 +203,9 @@ export function parseStickyNotes(notesText: string): Record<string, string> {
   const lines = notesText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
   for (const line of lines) {
-    // Check for YYYY.MM.DD or YYYY-MM-DD or MM/DD/YYYY or M/D patterns
     const matchFull = line.match(/^(\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2})\s*[:\-—]\s*(.+)$/i);
     if (matchFull) {
       let dateKey = matchFull[1].replace(/[\-/]/g, '.');
-      // Normalize to YYYY.MM.DD
       const parts = dateKey.split('.');
       if (parts.length === 3) {
         const y = parts[0].length === 4 ? parts[0] : parts[2];
@@ -204,7 +217,6 @@ export function parseStickyNotes(notesText: string): Record<string, string> {
       continue;
     }
 
-    // Check for "Date: Reason" or "July 27: Reason" or "27 July: Reason"
     const matchWordMonth = line.match(/^([A-Za-z]+\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|\d{1,2}\s+[A-Za-z]+(?:,\s*\d{4})?)\s*[:\-—]\s*(.+)$/i);
     if (matchWordMonth) {
       const datePart = matchWordMonth[1];
@@ -222,16 +234,47 @@ export function parseStickyNotes(notesText: string): Record<string, string> {
   return result;
 }
 
+export function computePeriodLabel(dates: string[]): string {
+  if (!dates || dates.length === 0) {
+    // Return standard current payroll cycle (16th to 15th)
+    const now = new Date();
+    const curMonth = now.toLocaleString('en-US', { month: 'short' });
+    return `Cycle 16 ${curMonth} – 15 Next Month`;
+  }
+  const sorted = [...dates].sort();
+  const first = toUSDate(sorted[0]);
+  const last = toUSDate(sorted[sorted.length - 1]);
+  return `${first} – ${last}`;
+}
+
 export function exportOvertimeToExcel(
   classifiedList: DayClassification[],
   exportSettings: ExportSettings,
   dayReasons: Record<string, string> = {},
   overrides: Record<string, DayCategory> = {},
-  weekendDays: number[] = [5, 6]
+  weekendDays: number[] = [0, 5, 6]
 ): { success: boolean; missingDates: string[]; error?: string } {
-  const name = exportSettings.name.trim() || 'Employee Name';
+  const name = exportSettings.name?.trim() || '';
   const employeeId = exportSettings.employeeId?.trim() || '';
   const shiftEnd = exportSettings.shiftEnd || '17:00';
+
+  // MANDATORY SAP ID CHECK - Reject empty or placeholder values
+  if (!employeeId || employeeId.toLowerCase() === 'employee id' || employeeId.toLowerCase() === 'sap id' || employeeId.toLowerCase() === 'null') {
+    return {
+      success: false,
+      missingDates: [],
+      error: '⛔ MANDATORY FIELD MISSING: SAP / Employee ID is strictly required. Please enter your valid SAP ID before exporting to Excel.',
+    };
+  }
+
+  // MANDATORY EMPLOYEE NAME CHECK - Reject empty or placeholder values
+  if (!name || name.toLowerCase() === 'employee name' || name.toLowerCase() === 'no employee name set' || name.toLowerCase() === 'null') {
+    return {
+      success: false,
+      missingDates: [],
+      error: '⛔ MANDATORY FIELD MISSING: Full Employee Name is strictly required. Please enter your full name before exporting to Excel.',
+    };
+  }
 
   const overtimeDays = classifiedList.filter((c) => {
     const isWeekendRow = weekdayOf(c.row.date, weekendDays).isWeekend;
@@ -271,22 +314,27 @@ export function exportOvertimeToExcel(
     };
   }
 
-  const headers = ['Name', 'Employee ID', 'Date', 'Day', 'From', 'To', 'Total', 'Reason'];
+  const headers = ['Name', 'Employee ID', 'Date', 'Day', 'From', 'To', 'Total', 'Reason', 'Shift Note'];
   const dataRows = overtimeDays.map((c) => {
     const reason = (dayReasons[c.row.date] || c.userReason || '').trim();
     const isManualOT = overrides[c.row.date] === 'overtime_manual' && c.overtimeMin === 0;
-    const otMins = isManualOT ? 60 : c.overtimeMin; // default 1 hr for manual overtime if 0
+    const otMins = isManualOT ? 60 : c.overtimeMin;
     const toTime = c.row.end && c.row.end !== '00:00:00' ? to12Hour(c.row.end) : '06:00 PM';
+    const { dayIndex } = weekdayOf(c.row.date, weekendDays);
+    const isTue = dayIndex === 2;
+    const fromTime = isTue ? '04:00 PM' : to12Hour(shiftEnd + ':00');
+    const shiftNote = isTue ? 'Tuesday 4:00 PM Early Departure Rule' : 'Standard Shift';
 
     return [
       name,
       employeeId,
       toUSDate(c.row.date),
       weekdayFullOf(c.row.date),
-      to12Hour(shiftEnd + ':00'),
+      fromTime,
       toTime,
       toHM(otMins),
       reason,
+      shiftNote,
     ];
   });
 
@@ -300,6 +348,7 @@ export function exportOvertimeToExcel(
     { wch: 14 },
     { wch: 12 },
     { wch: 45 },
+    { wch: 30 },
   ];
 
   const wb = XLSX.utils.book_new();

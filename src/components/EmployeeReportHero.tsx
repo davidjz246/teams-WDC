@@ -33,6 +33,7 @@ interface EmployeeReportHeroProps {
   totalRequiredCount: number;
   onOpenDirectory: () => void;
   onOpenStickyNotes?: () => void;
+  onNavigateTab?: (tab: 'team_leader_approvals' | 'manager_overview' | 'employee_ledger') => void;
 }
 
 export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
@@ -53,6 +54,7 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
   completedRequiredCount,
   totalRequiredCount,
   onOpenDirectory,
+  onNavigateTab,
 }) => {
   const cleanName = employeeName.trim();
   const cleanId = employeeId.trim();
@@ -78,6 +80,32 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
           : 'bg-rose-500/10 border-rose-500/30 text-foreground shadow-rose-500/5'
       }`}
     >
+      {/* Quick Role & Tab Switcher Bar inside Hero */}
+      {onNavigateTab && (
+        <div className="mb-5 pb-4 border-b border-border/80 flex items-center justify-between gap-2 flex-wrap">
+          <div className="text-xs font-mono font-bold text-foreground flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+            <span>Switch Portal View:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onNavigateTab('team_leader_approvals')}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            >
+              <span>👉 Open Tab 2: Team Leader Approvals</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('manager_overview')}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            >
+              <span>👉 Open Tab 3: Manager Matrix</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Action & Verification Badges */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-5 border-b border-border/80">
         <div className="flex items-center gap-2 flex-wrap">
