@@ -136,12 +136,12 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
   };
 
   return (
-    <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 mb-6 shadow-sm">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+    <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 mb-6 shadow-xs">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4 pb-3 border-b border-border/80">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-amber-500" />
-          <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
-            Raw Attendance / Teams Punch Ledger
+          <h2 className="font-mono text-xs uppercase tracking-widest text-foreground font-bold">
+            Raw Attendance Punch Ledger
           </h2>
         </div>
 
@@ -150,7 +150,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
           <button
             type="button"
             onClick={handleLoadSample}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all shadow-2xs cursor-pointer"
             title="Load sample monthly timesheet with Tuesday overtime and Sunday weekend"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -160,7 +160,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
           <button
             type="button"
             onClick={handlePasteClipboard}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-muted hover:bg-accent text-foreground border border-border transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-muted/60 hover:bg-muted text-foreground border border-border transition-all shadow-2xs cursor-pointer"
             title="Paste attendance punch logs directly from your clipboard"
           >
             <Clipboard className="w-3.5 h-3.5 text-amber-500" />
@@ -171,7 +171,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
             <button
               type="button"
               onClick={handleClear}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-all shadow-2xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all shadow-2xs cursor-pointer"
               title="Clear current punch text"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -184,13 +184,13 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
       <textarea
         value={rawInput}
         onChange={(e) => onChangeInput(e.target.value)}
-        placeholder="Paste your attendance / Teams punch logs here (Date, Check-in, Check-out)..."
-        className="w-full min-h-[160px] bg-background border border-border rounded-2xl p-4 font-mono text-xs text-foreground leading-relaxed focus:outline-none focus:border-amber-500 resize-y transition-colors"
+        placeholder="Paste your attendance punch logs here (Date, Check-in, Check-out)..."
+        className="w-full min-h-[160px] bg-background border border-border focus:border-amber-500 rounded-2xl p-4 font-mono text-xs text-foreground leading-relaxed focus:outline-hidden resize-y transition-colors"
       />
 
-      <div className="font-mono text-xs text-muted-foreground mt-3 flex items-center justify-between flex-wrap gap-2">
+      <div className="font-mono text-[11px] text-muted-foreground mt-3 flex items-center justify-between flex-wrap gap-2">
         <span>Paste rows of three lines each: date (YYYY.MM.DD), check-in time, check-out time.</span>
-        <span className="text-amber-500 font-semibold">00:00:00 / 00:00:00 is read as absent</span>
+        <span className="text-amber-500 font-semibold">00:00:00 / 00:00:00 indicates absent / rest day</span>
       </div>
 
       {/* Prominent 'Read the Ledger' Button under Raw Punch Data */}

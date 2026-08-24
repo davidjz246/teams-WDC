@@ -75,7 +75,10 @@ export const ManagerOverview: React.FC<ManagerOverviewProps> = ({ currentUser, o
       'Day',
       'Standard Shift End',
       'Check-out Time',
-      'Overtime Duration',
+      'Claimed OT Duration',
+      'TL Authorized OT',
+      'Adjusted by TL?',
+      'TL Adjustment Justification',
       'Mandatory Reason / Justification',
       'Approval Status',
       'Reviewed By',
@@ -93,7 +96,10 @@ export const ManagerOverview: React.FC<ManagerOverviewProps> = ({ currentUser, o
           item.dayOfWeek,
           to12Hour(item.shiftEndStandard + ':00'),
           to12Hour(item.endTime),
+          toHM(item.originalOvertimeMinutes ?? item.overtimeMinutes),
           toHM(item.overtimeMinutes),
+          item.isAdjustedByLeader ? 'YES (Adjusted)' : 'NO',
+          item.adjustedReason || item.leaderNotes || 'N/A',
           item.reason,
           item.status.toUpperCase(),
           item.decidedBy || sub.reviewedBy || 'Pending',
@@ -110,7 +116,10 @@ export const ManagerOverview: React.FC<ManagerOverviewProps> = ({ currentUser, o
       { wch: 14 },
       { wch: 18 },
       { wch: 16 },
+      { wch: 18 },
+      { wch: 18 },
       { wch: 16 },
+      { wch: 35 },
       { wch: 50 },
       { wch: 16 },
       { wch: 25 },
@@ -452,13 +461,24 @@ export const ManagerOverview: React.FC<ManagerOverviewProps> = ({ currentUser, o
                             )}
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-xs font-mono text-muted-foreground">
                               {to12Hour(item.startTime)} – {to12Hour(item.endTime)}
                             </span>
-                            <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                              + {fmtHours(item.overtimeMinutes)}
-                            </span>
+                            {item.isAdjustedByLeader ? (
+                              <div className="flex items-center gap-1.5 font-mono">
+                                <span className="text-[11px] text-muted-foreground line-through">
+                                  {toHM(item.originalOvertimeMinutes ?? item.overtimeMinutes)}
+                                </span>
+                                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                                  {toHM(item.overtimeMinutes)} (TL Adjusted)
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                                + {toHM(item.overtimeMinutes)}
+                              </span>
+                            )}
                             <span
                               className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase ${
                                 item.status === 'approved'
@@ -476,14 +496,21 @@ export const ManagerOverview: React.FC<ManagerOverviewProps> = ({ currentUser, o
                         {/* Stated Reason Box */}
                         <div className="bg-muted/40 p-2.5 rounded-md border border-border/60 text-xs">
                           <span className="font-mono font-bold text-[11px] text-muted-foreground uppercase mr-1">
-                            Reason for Overtime:
+                            Employee Reason:
                           </span>
                           <span className="text-foreground font-medium">
                             {item.reason || <span className="italic text-rose-400">No reason provided</span>}
                           </span>
                         </div>
 
-                        {item.leaderNotes && (
+                        {item.adjustedReason && (
+                          <div className="p-2 rounded bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 font-mono">
+                            <span className="font-bold mr-1">TL Adjustment Reason:</span>
+                            <span>{item.adjustedReason}</span>
+                          </div>
+                        )}
+
+                        {item.leaderNotes && !item.adjustedReason && (
                           <div className="text-[11px] text-muted-foreground font-mono">
                             TL Note: {item.leaderNotes} (by {item.decidedBy || 'Leader'})
                           </div>

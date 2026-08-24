@@ -46,7 +46,6 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
   lateCount,
   presentCount,
   excusedCount,
-  isUserDataComplete,
   missingDataErrors,
   shiftEndTime,
   lateThresholdVal,
@@ -68,159 +67,131 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
         .map((w) => w[0])
         .join('')
         .toUpperCase()
-    : 'EMP';
+    : 'WD';
 
   return (
     <div
-      className={`rounded-3xl p-6 sm:p-8 mb-6 transition-all duration-300 shadow-xl border overflow-hidden ${
+      className={`rounded-3xl p-6 sm:p-7 mb-6 transition-all duration-300 shadow-md border ${
         completionPercentage === 100
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-foreground shadow-emerald-500/5'
+          ? 'bg-card border-emerald-500/30'
           : completionPercentage >= 60
-          ? 'bg-amber-500/10 border-amber-500/30 text-foreground shadow-amber-500/5'
-          : 'bg-rose-500/10 border-rose-500/30 text-foreground shadow-rose-500/5'
+          ? 'bg-card border-amber-500/30'
+          : 'bg-card border-rose-500/30'
       }`}
     >
-      {/* Quick Role & Tab Switcher Bar inside Hero */}
-      {onNavigateTab && (
-        <div className="mb-5 pb-4 border-b border-border/80 flex items-center justify-between gap-2 flex-wrap">
-          <div className="text-xs font-mono font-bold text-foreground flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-            <span>Switch Portal View:</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onNavigateTab('team_leader_approvals')}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-            >
-              <span>👉 Open Tab 2: Team Leader Approvals</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('manager_overview')}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-            >
-              <span>👉 Open Tab 3: Manager Matrix</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Top Action & Verification Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-5 border-b border-border/80">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-border/80">
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className={`font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-2xs transition-all duration-300 ${
+            className={`font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-2xs transition-all duration-300 ${
               completionPercentage === 100
-                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                 : completionPercentage >= 60
-                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 animate-pulse'
-                : 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/40 animate-pulse'
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
             }`}
           >
             {completionPercentage === 100 ? (
               <>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>100% All Data Verified &amp; Complete</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>100% Data Verified &amp; Complete</span>
               </>
             ) : (
               <>
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>{completionPercentage}% Data In — Required Data Missing</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                <span>{completionPercentage}% Data In — Incomplete Items</span>
               </>
             )}
           </span>
 
-          <span className="font-mono text-xs font-semibold px-3 py-1.5 rounded-full bg-card border border-border text-muted-foreground flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-teal-400" />
+          <span className="font-mono text-xs font-medium px-3 py-1.5 rounded-xl bg-muted/40 border border-border/80 text-muted-foreground flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
             <span>Shift End: {shiftEndTime || '17:00'}</span>
           </span>
         </div>
 
         <button
           onClick={onOpenDirectory}
-          className="px-3.5 py-1.5 rounded-full font-mono text-xs font-bold border transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 bg-card hover:bg-accent text-foreground border-border shadow-xs cursor-pointer"
+          className="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border transition-all hover:bg-muted text-foreground border-border shadow-2xs flex items-center gap-1.5 cursor-pointer"
           title="Open Employee Staff Directory"
         >
-          <Users className="w-3.5 h-3.5 text-teal-400" />
-          <span>{cleanId ? `Staff ID #${cleanId}` : '⚠️ ID Missing'}</span>
+          <Users className="w-3.5 h-3.5 text-amber-500" />
+          <span>{cleanId ? `Staff ID #${cleanId}` : 'Select from Directory'}</span>
         </button>
       </div>
 
       {/* CENTERED EMPLOYEE IDENTITY HEADER WITH LIVE DATA COMPLETION COUNTER */}
-      <div className="text-center max-w-3xl mx-auto space-y-3 py-2">
+      <div className="text-center max-w-2xl mx-auto space-y-3 py-1">
         {/* Avatar Circle */}
         <div className="relative inline-block mx-auto">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-b from-amber-500 to-amber-600 text-black font-mono font-extrabold text-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/20 ring-4 ring-background">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-black font-mono font-black text-xl mx-auto flex items-center justify-center shadow-md shadow-amber-500/20">
             {initials}
           </div>
           {completionPercentage === 100 ? (
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow-md border-2 border-background">
-              <Check className="w-3.5 h-3.5" />
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shadow-md border-2 border-card">
+              <Check className="w-3 h-3" />
             </span>
           ) : (
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-amber-500 text-black flex items-center justify-center text-[10px] font-mono font-extrabold shadow-md border-2 border-background animate-pulse">
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[10px] font-mono font-black shadow-md border-2 border-card">
               !
             </span>
           )}
         </div>
 
-        {/* Employee Name + DYNAMIC COMPLETION COUNTER BESIDE THE NAME */}
-        <div className="flex items-center justify-center gap-3 flex-wrap px-4">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
-            {cleanName || <span className="italic opacity-70 font-normal">No Employee Name Set</span>}
+        {/* Employee Name + DYNAMIC COMPLETION COUNTER */}
+        <div className="flex items-center justify-center gap-2.5 flex-wrap px-4">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-tight">
+            {cleanName || <span className="text-muted-foreground font-normal italic">No Employee Name Set</span>}
           </h1>
 
-          {/* DYNAMIC LIVE COUNTER BADGE BESIDE THE NAME */}
           <div
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-mono font-bold border transition-all duration-300 shadow-sm ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-bold border transition-all duration-300 ${
               completionPercentage === 100
-                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-emerald-500/10'
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                 : completionPercentage >= 60
-                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40'
-                : 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/40'
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
             }`}
-            title={`Required Data Completion Status: ${completedRequiredCount}/${totalRequiredCount} items verified (${completionPercentage}%)`}
           >
             {completionPercentage === 100 ? (
               <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span className="font-extrabold text-sm tracking-tight">{completionPercentage}%</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90">Complete</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-extrabold">{completionPercentage}%</span>
+                <span className="text-[10px] uppercase font-semibold">Ready</span>
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 animate-bounce" />
-                <span className="font-extrabold text-sm tracking-tight">{completionPercentage}%</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-90">Required Data</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="font-extrabold">{completionPercentage}%</span>
+                <span className="text-[10px] uppercase font-semibold">Filled</span>
               </>
             )}
           </div>
         </div>
 
         {/* Subtitle Details */}
-        <div className="flex items-center justify-center gap-2 flex-wrap text-xs font-mono font-medium text-muted-foreground">
-          <span className="px-2.5 py-0.5 rounded-md bg-muted/60 text-foreground font-bold border border-border">
-            Employee ID: {cleanId || 'Not Assigned'}
+        <div className="flex items-center justify-center gap-2 flex-wrap text-xs font-mono text-muted-foreground">
+          <span className="px-2.5 py-0.5 rounded-lg bg-muted text-foreground font-semibold border border-border">
+            SAP #{cleanId || 'Pending'}
           </span>
           <span>•</span>
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-amber-500" />
-            <span>{totalDays} Days Processed in Ledger</span>
+            <span>{totalDays} Days in Ledger</span>
           </span>
           <span>•</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-            {punctualityScore}% On-Time Rating
+          <span className="text-emerald-400 font-semibold">
+            {punctualityScore}% On-Time
           </span>
           <span>•</span>
-          <span className={`font-bold ${completionPercentage === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
-            {completedRequiredCount}/{totalRequiredCount} Required Items Filed
+          <span className={completionPercentage === 100 ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
+            {completedRequiredCount}/{totalRequiredCount} Requirements
           </span>
         </div>
 
-        {/* Visual Progress Bar (Decreases / Increases dynamically) */}
-        <div className="max-w-md mx-auto pt-1">
-          <div className="w-full bg-muted/70 h-2 rounded-full overflow-hidden border border-border/80">
+        {/* Visual Progress Bar */}
+        <div className="max-w-xs mx-auto pt-1">
+          <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border/60">
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 completionPercentage === 100
@@ -235,55 +206,47 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
         </div>
       </div>
 
-      {/* STRUCTURED FILED DATA REPORT (Positioned Directly Underneath) */}
-      <div className="mt-8">
+      {/* STRUCTURED AUDIT TILES */}
+      <div className="mt-6">
         <div className="flex items-center justify-between gap-2 mb-3">
           <h3 className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-teal-400" />
-            <span>Filed Data &amp; Verification Report</span>
+            <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+            <span>Data Verification Status</span>
           </h3>
           <span className="text-[11px] font-mono text-muted-foreground">
-            Audit verification status for Excel ledger export ({completionPercentage}% Complete)
+            {completedRequiredCount}/{totalRequiredCount} verified ({completionPercentage}%)
           </span>
         </div>
 
         {/* 4 Dedicated Structured Tiles */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Tile 1: Employee Record */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+          <div className="bg-muted/20 border border-border rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-mono uppercase font-bold text-muted-foreground flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-teal-400" />
+                <User className="w-3.5 h-3.5 text-amber-500" />
                 <span>Employee Record</span>
               </span>
-              {cleanName && cleanId ? (
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-              )}
+              <span className={`w-2 h-2 rounded-full ${cleanName && cleanId ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
             </div>
             <div>
               <div className="text-sm font-bold text-foreground font-mono">
-                {cleanId ? `ID #${cleanId}` : 'Missing Employee ID'}
+                {cleanId ? `ID #${cleanId}` : 'Missing SAP ID'}
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                {cleanName ? 'Identity verified & mapped' : 'Please provide full name'}
+                {cleanName ? cleanName : 'Provide full name'}
               </p>
             </div>
           </div>
 
           {/* Tile 2: Overtime Justifications */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+          <div className="bg-muted/20 border border-border rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-mono uppercase font-bold text-muted-foreground flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-amber-500" />
                 <span>Overtime Reasons</span>
               </span>
-              {missingDataErrors.some((e) => e.id.includes('reason')) ? (
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              )}
+              <span className={`w-2 h-2 rounded-full ${missingDataErrors.some((e) => e.id.includes('reason')) ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
             </div>
             <div>
               <div className="text-sm font-bold text-foreground font-mono">
@@ -293,14 +256,14 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {missingDataErrors.some((e) => e.id.includes('reason'))
-                  ? '⚠️ Reasons required before export'
-                  : 'All justifications documented'}
+                  ? 'Reasons required'
+                  : 'All reasons documented'}
               </p>
             </div>
           </div>
 
           {/* Tile 3: Punctuality Status */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+          <div className="bg-muted/20 border border-border rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-mono uppercase font-bold text-muted-foreground flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -312,21 +275,21 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
               <div className="text-sm font-bold text-foreground font-mono flex items-center gap-2">
                 <span>{punctualityScore}% On-Time</span>
                 {lateCount === 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-bold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold">
                     0 Late
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {lateCount === 0
-                  ? `All check-ins before ${lateThresholdVal || '09:15'}`
-                  : `${lateCount} check-in(s) past threshold`}
+                  ? `Check-ins before ${lateThresholdVal || '09:15'}`
+                  : `${lateCount} late arrival(s)`}
               </p>
             </div>
           </div>
 
-          {/* Tile 4: Export Readiness (Shows live completion counter) */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+          {/* Tile 4: Export Readiness */}
+          <div className="bg-muted/20 border border-border rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-mono uppercase font-bold text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
@@ -340,8 +303,8 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {completionPercentage === 100
-                  ? 'Excel export ready'
-                  : `${completedRequiredCount}/${totalRequiredCount} requirements met`}
+                  ? 'Ready for Excel export'
+                  : `${completedRequiredCount}/${totalRequiredCount} items filled`}
               </p>
             </div>
           </div>
@@ -349,14 +312,14 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
 
         {/* Action Required Alert Box (if incomplete) */}
         {completionPercentage < 100 && (
-          <div className="mt-3.5 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-xs font-mono space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-500">
+          <div className="mt-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs font-mono space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-400">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>
-                Required items missing ({completedRequiredCount}/{totalRequiredCount} completed — {completionPercentage}%):
+                Required items missing ({completedRequiredCount}/{totalRequiredCount} completed):
               </span>
             </div>
-            <ul className="space-y-1.5 pl-1">
+            <ul className="space-y-1 pl-1">
               {missingDataErrors.map((err) => (
                 <li key={err.id} className="flex items-center justify-between text-[11px] text-foreground gap-2">
                   <span className="flex items-center gap-1.5">
@@ -366,7 +329,7 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
                   {err.action && (
                     <button
                       onClick={err.action}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 shrink-0 text-[10px] cursor-pointer shadow-xs"
+                      className="px-2 py-0.5 rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 shrink-0 text-[10px] cursor-pointer shadow-2xs"
                     >
                       {err.actionLabel}
                     </button>
@@ -379,34 +342,34 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
       </div>
 
       {/* BOTTOM KEY METRICS SUMMARY RIBBON */}
-      <div className="mt-6 pt-5 border-t border-border/80 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center font-mono">
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className="text-2xl font-extrabold text-foreground">{punctualityScore}%</div>
+      <div className="mt-5 pt-4 border-t border-border/80 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-center font-mono">
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className="text-xl font-black text-foreground">{punctualityScore}%</div>
           <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Punctuality</div>
         </div>
 
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className="text-2xl font-extrabold text-amber-500">{fmtHours(totalOvertimeMins)}</div>
-          <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Total Overtime</div>
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className="text-xl font-black text-amber-500">{fmtHours(totalOvertimeMins)}</div>
+          <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Overtime</div>
         </div>
 
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className="text-2xl font-extrabold text-emerald-500">{presentCount}</div>
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className="text-xl font-black text-emerald-400">{presentCount}</div>
           <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">On Time</div>
         </div>
 
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className="text-2xl font-extrabold text-amber-500">{overtimeCount}</div>
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className="text-xl font-black text-amber-500">{overtimeCount}</div>
           <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Overtime Days</div>
         </div>
 
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className="text-2xl font-extrabold text-teal-400">{excusedCount}</div>
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className="text-xl font-black text-teal-400">{excusedCount}</div>
           <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Excused</div>
         </div>
 
-        <div className="bg-card/70 border border-border/60 rounded-2xl p-3">
-          <div className={`text-2xl font-extrabold ${lateCount === 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+        <div className="bg-muted/20 border border-border/60 rounded-2xl p-2.5">
+          <div className={`text-xl font-black ${lateCount === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {lateCount}
           </div>
           <div className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5">Late Days</div>
@@ -415,3 +378,4 @@ export const EmployeeReportHero: React.FC<EmployeeReportHeroProps> = ({
     </div>
   );
 };
+

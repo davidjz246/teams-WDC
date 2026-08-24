@@ -238,9 +238,9 @@ export const ExportCard: React.FC<ExportCardProps> = ({
 
       {/* Card Header & Quick Tools */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-border/70">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-border/80">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
@@ -259,10 +259,10 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               <button
                 type="button"
                 onClick={onOpenDirectory}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-muted/60 hover:bg-muted text-foreground border border-border transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
                 title="Manage local employee database"
               >
-                <Database className="w-3.5 h-3.5" />
+                <Database className="w-3.5 h-3.5 text-amber-500" />
                 <span>Local DB ({directoryList.length})</span>
               </button>
             )}
@@ -271,7 +271,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               <button
                 type="button"
                 onClick={handleClearId}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
                 title="Clear entered ID & Name"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -282,31 +282,31 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             <button
               type="button"
               onClick={onOpenStickyNotes}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium bg-muted/60 hover:bg-muted text-foreground border border-border transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
               title="Import overtime reasons from Sticky Notes"
             >
-              <StickyNote className="w-3.5 h-3.5 text-amber-400" />
+              <StickyNote className="w-3.5 h-3.5" />
               <span>Sticky Notes</span>
             </button>
           </div>
         </div>
 
         {/* Security & Data Ownership Notice */}
-        <div className="mb-4 p-3 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between gap-2.5 text-[11px] font-mono text-muted-foreground">
+        <div className="mb-4 p-3 rounded-2xl bg-muted/30 border border-border/80 flex items-center justify-between gap-2.5 text-[11px] font-mono text-muted-foreground">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
             <span>
-              <strong className="text-foreground">Security &amp; Privacy Lock:</strong> Timesheet punch records are bound strictly to this employee. Changing the SAP ID or Name wipes previous ledger data.
+              <strong className="text-foreground">Security &amp; Data Lock:</strong> Timesheet punch records belong strictly to this employee profile.
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20 shrink-0">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 shrink-0">
             <ShieldCheck className="w-3 h-3" />
             <span>Encrypted Session</span>
           </div>
         </div>
 
         {/* 3 Dedicated Parameter Blocks */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {/* Block 1: Employee ID with Auto-Lookup Dropdown */}
           <div
             ref={dropdownRef}
@@ -314,13 +314,13 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           >
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
-                <Hash className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <Hash className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span>SAP / Employee ID</span>
               </label>
               {exportSettings.employeeId.trim() ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
-                    ✓ Complete
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
+                    ✓ Set
                   </span>
                   <button
                     type="button"
@@ -332,7 +332,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                   </button>
                 </div>
               ) : (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
                   ⚠️ Required
                 </span>
               )}
@@ -348,11 +348,11 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                     if (directoryList.length > 0) setShowIdDropdown(true);
                   }}
                   onBlur={handleBlurSave}
-                  placeholder="Enter SAP / ID # (e.g. 10452)"
+                  placeholder="Enter SAP # (e.g. 10452)"
                   className={`w-full min-w-0 bg-background rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-foreground focus:outline-hidden transition-all ${
                     exportSettings.employeeId.trim()
-                      ? 'border border-emerald-500/40 focus:border-emerald-500'
-                      : 'border-2 border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
+                      ? 'border border-border focus:border-amber-500'
+                      : 'border border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
                   }`}
                 />
                 {exportSettings.employeeId && (
@@ -369,13 +369,13 @@ export const ExportCard: React.FC<ExportCardProps> = ({
 
               {/* Suggestions Dropdown from Local Laptop Database */}
               {showIdDropdown && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-card border border-teal-500/40 rounded-2xl shadow-xl max-h-48 overflow-y-auto p-1 space-y-1">
-                  <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-teal-400 font-bold flex items-center justify-between border-b border-border/50">
-                    <span>Local Database Matches</span>
+                <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-card border border-border rounded-2xl shadow-xl max-h-48 overflow-y-auto p-1 space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-amber-500 font-bold flex items-center justify-between border-b border-border/60">
+                    <span>Database Matches</span>
                     <button
                       type="button"
                       onClick={() => setShowIdDropdown(false)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -388,13 +388,13 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                         e.preventDefault();
                         handleSelectSuggestion(item.id, item.name);
                       }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-teal-500/15 text-xs font-mono flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                      className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-muted text-xs font-mono flex items-center justify-between gap-2 cursor-pointer transition-colors"
                     >
                       <div className="min-w-0">
                         <span className="font-bold text-foreground">#{item.id}</span>
                         <span className="text-muted-foreground text-[11px] ml-2 truncate">{item.name}</span>
                       </div>
-                      <span className="text-[10px] text-teal-400 font-bold shrink-0">Auto-fill</span>
+                      <span className="text-[10px] text-amber-500 font-bold shrink-0">Auto-fill</span>
                     </button>
                   ))}
                 </div>
@@ -414,13 +414,13 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           <div className="p-4 rounded-2xl border border-border bg-muted/20 flex flex-col justify-between min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
-                <User className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <User className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span>Full Employee Name</span>
               </label>
               {exportSettings.name.trim() ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
-                    ✓ Complete
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
+                    ✓ Set
                   </span>
                   <button
                     type="button"
@@ -432,7 +432,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                   </button>
                 </div>
               ) : (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
                   ⚠️ Required
                 </span>
               )}
@@ -447,8 +447,8 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                 placeholder="Full Employee Name"
                 className={`w-full min-w-0 bg-background rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-foreground focus:outline-hidden transition-all ${
                   exportSettings.name.trim()
-                    ? 'border border-emerald-500/40 focus:border-emerald-500'
-                    : 'border-2 border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
+                    ? 'border border-border focus:border-amber-500'
+                    : 'border border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
                 }`}
               />
               {exportSettings.name && (
@@ -468,10 +468,10 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           <div className="p-4 rounded-2xl border border-border bg-muted/20 flex flex-col justify-between min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
-                <Clock className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span>Shift End Time</span>
               </label>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
                 ✓ Set
               </span>
             </div>
@@ -481,7 +481,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                 type="time"
                 value={exportSettings.shiftEnd}
                 onChange={(e) => update('shiftEnd', e.target.value)}
-                className="w-full min-w-0 bg-background border border-emerald-500/40 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-hidden"
+                className="w-full min-w-0 bg-background border border-border focus:border-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-hidden"
               />
             </div>
           </div>
@@ -489,15 +489,15 @@ export const ExportCard: React.FC<ExportCardProps> = ({
 
         {/* Verification Status Banner */}
         <div
-          className={`mt-4 p-4 rounded-2xl border transition-all text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          className={`mt-4 p-3.5 rounded-2xl border transition-all text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
             !exportSettings.employeeId.trim() || !exportSettings.name.trim()
-              ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
               : unresolvedAbsencesCount > 0
-              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
               : missingReasonsCount > 0
-              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
               : overtimeCount > 0
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
               : 'bg-muted/30 border-border text-muted-foreground'
           }`}
         >
@@ -505,36 +505,36 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             {!exportSettings.employeeId.trim() ? (
               <>
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span className="font-bold text-rose-300">
-                  ⛔ SAP / Employee ID is strictly mandatory: Please enter your SAP ID to enable Excel export.
+                <span className="font-bold">
+                  SAP / Employee ID is required to export or submit.
                 </span>
               </>
             ) : !exportSettings.name.trim() ? (
               <>
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span className="font-bold text-rose-300">
-                  ⛔ Employee Name is strictly mandatory: Please enter your full name to enable Excel export.
+                <span className="font-bold">
+                  Full Employee Name is required to export or submit.
                 </span>
               </>
             ) : unresolvedAbsencesCount > 0 ? (
               <>
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span className="font-semibold text-rose-300">
-                  ⚠️ Checkpoint Required: {unresolvedAbsencesCount} unexcused absence {unresolvedAbsencesCount === 1 ? 'day needs' : 'days need'} an excuse checkpoint verified before Excel export.
+                <span className="font-semibold">
+                  Checkpoint Required: {unresolvedAbsencesCount} absence {unresolvedAbsencesCount === 1 ? 'day needs' : 'days need'} verification before Excel export.
                 </span>
               </>
             ) : missingReasonsCount > 0 ? (
               <>
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="font-semibold text-amber-300">
-                  ⚠️ Overtime Reason Required: {missingReasonsCount} {missingReasonsCount === 1 ? 'day is' : 'days are'} missing a reason!
+                <span className="font-semibold">
+                  Overtime Reason Required: {missingReasonsCount} {missingReasonsCount === 1 ? 'day is' : 'days are'} missing justification.
                 </span>
               </>
             ) : overtimeCount > 0 ? (
               <>
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="font-semibold text-emerald-300">
-                  ✓ SAP #{exportSettings.employeeId}, {exportSettings.name} &amp; {overtimeCount} overtime reasons verified. Ready to export!
+                <span className="font-semibold">
+                  SAP #{exportSettings.employeeId}, {exportSettings.name} &amp; {overtimeCount} overtime reasons verified.
                 </span>
               </>
             ) : (
@@ -548,7 +548,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             <button
               type="button"
               onClick={onOpenStickyNotes}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 shrink-0 shadow-xs cursor-pointer whitespace-nowrap"
+              className="px-3 py-1.5 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 shrink-0 shadow-2xs cursor-pointer whitespace-nowrap"
             >
               Fill with Sticky Notes
             </button>
@@ -563,24 +563,24 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             type="button"
             disabled={!isSapValid || !isNameValid || hasMissingItems}
             onClick={onSubmitToTeamLeader}
-            className={`w-full py-4 px-5 font-mono text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
+            className={`w-full py-3.5 px-5 font-mono text-xs sm:text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
               !isSapValid || !isNameValid
-                ? 'bg-muted/70 text-muted-foreground border-2 border-dashed border-border cursor-not-allowed opacity-60'
+                ? 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-60'
                 : hasMissingItems
                 ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20 active:scale-[0.99] cursor-pointer'
                 : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 active:scale-[0.99] cursor-pointer'
             }`}
           >
             {!isSapValid || !isNameValid ? (
-              <Lock className="w-5 h-5 shrink-0 text-muted-foreground" />
+              <Lock className="w-4 h-4 shrink-0 text-muted-foreground" />
             ) : (
-              <CheckCircle className="w-5 h-5 shrink-0" />
+              <CheckCircle className="w-4 h-4 shrink-0" />
             )}
             <span className="truncate">
               {!isSapValid
-                ? '🔒 SAP ID Required to Submit'
+                ? 'SAP ID Required to Submit'
                 : !isNameValid
-                ? '🔒 Name Required to Submit'
+                ? 'Name Required to Submit'
                 : hasMissingItems
                 ? `Complete Missing Items (${missingReasonsCount + unresolvedAbsencesCount})`
                 : `Submit to Team Leader (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
@@ -593,47 +593,47 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           disabled={!isSapValid || !isNameValid || hasMissingItems || overtimeCount === 0}
           onClick={() => {
             if (!isSapValid) {
-              alert('⛔ EXPORT CANCELLED: SAP / Employee ID is strictly mandatory. Please enter your SAP ID first.');
+              alert('SAP / Employee ID is required. Please enter your SAP ID first.');
               return;
             }
             if (!isNameValid) {
-              alert('⛔ EXPORT CANCELLED: Full Employee Name is strictly mandatory. Please enter your name first.');
+              alert('Full Employee Name is required. Please enter your name first.');
               return;
             }
             if (hasMissingItems) {
-              alert('⛔ EXPORT CANCELLED: All overtime reasons and absence checkpoints must be completed before exporting to Excel.');
+              alert('All overtime reasons and absence checkpoints must be completed before exporting.');
               return;
             }
             if (overtimeCount === 0) {
-              alert('⛔ EXPORT CANCELLED: No overtime records found in the current punch ledger.');
+              alert('No overtime records found in the current punch ledger.');
               return;
             }
             onExport();
           }}
-          className={`w-full py-4 px-5 font-mono text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
+          className={`w-full py-3.5 px-5 font-mono text-xs sm:text-sm font-bold uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2.5 ${
             !isSapValid || !isNameValid
-              ? 'bg-rose-500/10 text-rose-300 border-2 border-dashed border-rose-500/40 cursor-not-allowed opacity-75'
+              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30 cursor-not-allowed opacity-60'
               : hasMissingItems
-              ? 'bg-muted/80 text-muted-foreground border-2 border-dashed border-amber-500/40 cursor-not-allowed opacity-75'
+              ? 'bg-muted/50 text-muted-foreground border border-amber-500/30 cursor-not-allowed opacity-60'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20 active:scale-[0.99] cursor-pointer'
           } ${!onSubmitToTeamLeader ? 'sm:col-span-2' : ''}`}
         >
           {!isSapValid || !isNameValid ? (
-            <Lock className="w-5 h-5 shrink-0 text-rose-400" />
+            <Lock className="w-4 h-4 shrink-0 text-rose-400" />
           ) : hasMissingItems ? (
-            <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
           ) : (
-            <FileSpreadsheet className="w-5 h-5 shrink-0" />
+            <FileSpreadsheet className="w-4 h-4 shrink-0" />
           )}
           <span className="truncate">
             {!isSapValid
-              ? '🔒 SAP ID Mandatory for Excel'
+              ? 'SAP ID Required for Excel'
               : !isNameValid
-              ? '🔒 Name Mandatory for Excel'
+              ? 'Name Required for Excel'
               : missingReasonsCount > 0
-              ? `⚠️ Fill ${missingReasonsCount} Reason(s) for Excel`
+              ? `Fill ${missingReasonsCount} Reason(s) for Excel`
               : unresolvedAbsencesCount > 0
-              ? '⚠️ Resolve Absence Checkpoint'
+              ? 'Resolve Absence Checkpoint'
               : `Export Excel Ledger (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
           </span>
         </button>

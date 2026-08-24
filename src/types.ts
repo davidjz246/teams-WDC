@@ -63,8 +63,11 @@ export interface OvertimeDayItem {
   startTime: string;
   endTime: string;
   shiftEndStandard: string;
-  overtimeMinutes: number;
-  reason: string;
+  overtimeMinutes: number; // Current/Approved overtime minutes
+  originalOvertimeMinutes?: number; // Original claimed overtime before team leader adjustment
+  isAdjustedByLeader?: boolean; // True if team leader corrected/reduced/increased the overtime
+  adjustedReason?: string; // Leader's justification for changing the overtime duration
+  reason: string; // Employee's justification
   category: DayCategory;
   status: ApprovalStatus;
   leaderNotes?: string;
@@ -80,7 +83,8 @@ export interface OvertimeSubmission {
   periodLabel: string; // e.g. "16 Jul 2026 – 15 Aug 2026"
   submittedAt: string;
   status: ApprovalStatus;
-  totalOvertimeMinutes: number;
+  totalOvertimeMinutes: number; // Sum of current overtime minutes
+  originalTotalOvertimeMinutes?: number; // Sum of original claimed overtime minutes
   items: OvertimeDayItem[];
   leaderComments?: string;
   reviewedBy?: string;

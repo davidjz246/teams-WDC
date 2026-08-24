@@ -899,6 +899,13 @@ export default function App() {
         {activeTab === 'manager_overview' && (
           <ManagerOverview currentUser={currentUser} onNavigateTab={setActiveTab} />
         )}
+
+        {/* Footer Branding & Watermark */}
+        <footer className="mt-12 mb-20 text-center text-[11px] font-mono text-muted-foreground/70 flex items-center justify-center gap-2 flex-wrap">
+          <span>Wadi Degla Clubs Attendance &amp; Overtime System</span>
+          <span className="text-border">•</span>
+          <span className="text-amber-400 font-bold uppercase tracking-wider">Made by David Kalad</span>
+        </footer>
       </div>
 
       {/* Floating Bottom Navigation Dock - Pinned and Always Accessible */}

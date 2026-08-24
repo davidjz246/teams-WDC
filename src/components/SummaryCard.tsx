@@ -64,18 +64,18 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       </div>
 
       {/* FIELD UNDER LEDGER OVERVIEW: CUSTOM WEEKEND DAYS SELECTOR & NAME DISPLAY */}
-      <div className="mb-6 p-4 rounded-2xl bg-muted/25 border border-border flex flex-col gap-3">
+      <div className="mb-6 p-4 rounded-2xl bg-muted/20 border border-border flex flex-col gap-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-              Official Weekend / Rest Days Configuration:
+              Official Weekend &amp; Rest Days Configuration
             </span>
           </div>
 
           {/* ACTIVE WEEKEND NAMES DISPLAY BESIDE THE CONTROLS */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-600 dark:text-teal-300 font-mono text-xs font-bold shadow-2xs self-start md:self-auto">
-            <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold shadow-2xs self-start md:self-auto">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
             <span>Active Weekend: {weekendNamesLabel}</span>
           </div>
         </div>
@@ -92,12 +92,12 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                   onClick={() => onToggleWeekendDay(d.index)}
                   className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
                     isSelected
-                      ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-500/20 shadow-teal-600/20'
+                      ? 'bg-amber-500 text-black border-amber-500'
                       : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border'
                   }`}
                   title={`Click to toggle ${d.long} as an official weekend rest day`}
                 >
-                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                  {isSelected && <Check className="w-3 h-3 text-black" />}
                   <span>{d.short}</span>
                 </button>
               );
@@ -110,21 +110,21 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
             <button
               type="button"
               onClick={() => onSetWeekendDays([5, 6])}
-              className="px-2 py-1 rounded-lg bg-card hover:bg-accent border border-border text-foreground hover:text-teal-400 transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-card hover:bg-muted border border-border text-foreground hover:text-amber-400 transition-colors cursor-pointer"
             >
               Fri &amp; Sat
             </button>
             <button
               type="button"
               onClick={() => onSetWeekendDays([0, 6])}
-              className="px-2 py-1 rounded-lg bg-card hover:bg-accent border border-border text-foreground hover:text-teal-400 transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-card hover:bg-muted border border-border text-foreground hover:text-amber-400 transition-colors cursor-pointer"
             >
               Sat &amp; Sun
             </button>
             <button
               type="button"
               onClick={() => onSetWeekendDays([0, 5, 6])}
-              className="px-2 py-1 rounded-lg bg-card hover:bg-accent border border-border text-foreground hover:text-teal-400 transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-card hover:bg-muted border border-border text-foreground hover:text-amber-400 transition-colors cursor-pointer"
             >
               Fri, Sat &amp; Sun
             </button>
@@ -133,7 +133,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
         {/* HELPER INFO: Explains exemption from unexcused absence & excel export inclusion */}
         <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground font-mono mt-0.5">
-          <Info className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+          <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
           <span>
             Punches on selected weekend days with 00:00:00 timestamps are automatically recognized as rest days and{' '}
             <strong className="text-foreground">will not be counted as unexcused absences</strong> in the ledger and export sheet.

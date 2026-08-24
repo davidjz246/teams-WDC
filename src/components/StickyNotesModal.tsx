@@ -70,7 +70,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
           <div>
             <h3 className="text-lg font-bold text-foreground">Import Overtime Sticky Notes</h3>
             <p className="text-xs font-mono text-muted-foreground">
-              Sync justifications from Windows Sticky Notes, Notepad, or Teams
+              Sync justifications from Windows Sticky Notes, Notepad, or text logs
             </p>
           </div>
         </div>

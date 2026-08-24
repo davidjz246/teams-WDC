@@ -59,7 +59,84 @@ export const DEFAULT_USERS: UserProfile[] = [
 
 const STORAGE_KEY_USERS = 'wdc_team_users_v2';
 const STORAGE_KEY_ACTIVE_USER = 'wdc_active_user_id_v2';
-const STORAGE_KEY_SUBMISSIONS = 'wdc_team_submissions_v2';
+const STORAGE_KEY_SUBMISSIONS = 'wdc_team_submissions_v3';
+
+export const INITIAL_SUBMISSIONS: OvertimeSubmission[] = [
+  {
+    id: 'sub_18492_aug2026',
+    employeeId: '18492',
+    employeeName: 'Omar Farouk Mostafa',
+    department: 'Operations & Facilities',
+    periodLabel: '16 Jul 2026 – 15 Aug 2026',
+    submittedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+    status: 'pending',
+    totalOvertimeMinutes: 345, // 5 hrs 45 mins claimed
+    originalTotalOvertimeMinutes: 345,
+    items: [
+      {
+        date: '2026.07.21',
+        dayOfWeek: 'Tue',
+        startTime: '08:45:00',
+        endTime: '19:15:00',
+        shiftEndStandard: '16:00',
+        overtimeMinutes: 195, // 3h 15m claimed (after 4 PM Tuesday)
+        originalOvertimeMinutes: 195,
+        reason: 'Emergency facility inspection and clubhouse maintenance handover.',
+        category: 'overtime_manual',
+        status: 'pending',
+      },
+      {
+        date: '2026.07.28',
+        dayOfWeek: 'Tue',
+        startTime: '08:50:00',
+        endTime: '18:30:00',
+        shiftEndStandard: '16:00',
+        overtimeMinutes: 150, // 2h 30m claimed
+        originalOvertimeMinutes: 150,
+        reason: 'Late shift sports equipment inventory count and supplier delivery verification.',
+        category: 'overtime_manual',
+        status: 'pending',
+      },
+    ],
+  },
+  {
+    id: 'sub_30198_aug2026',
+    employeeId: '30198',
+    employeeName: 'Ahmed Hassan El-Shazly',
+    department: 'IT & Digital Systems',
+    periodLabel: '16 Jul 2026 – 15 Aug 2026',
+    submittedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    status: 'pending',
+    totalOvertimeMinutes: 270, // 4h 30m claimed
+    originalTotalOvertimeMinutes: 270,
+    items: [
+      {
+        date: '2026.07.22',
+        dayOfWeek: 'Wed',
+        startTime: '08:40:00',
+        endTime: '20:10:00',
+        shiftEndStandard: '17:00',
+        overtimeMinutes: 190, // 3h 10m claimed
+        originalOvertimeMinutes: 190,
+        reason: 'Core network switch upgrade and server room UPS backup battery replacement.',
+        category: 'overtime_manual',
+        status: 'pending',
+      },
+      {
+        date: '2026.08.03',
+        dayOfWeek: 'Mon',
+        startTime: '08:55:00',
+        endTime: '18:20:00',
+        shiftEndStandard: '17:00',
+        overtimeMinutes: 80, // 1h 20m claimed
+        originalOvertimeMinutes: 80,
+        reason: 'Supported finance team with month-end SAP ERP ledger closing queries.',
+        category: 'overtime_manual',
+        status: 'pending',
+      },
+    ],
+  },
+];
 
 export function getTeamUsers(): UserProfile[] {
   try {
@@ -114,18 +191,28 @@ export function getSubmissions(): OvertimeSubmission[] {
     const raw = localStorage.getItem(STORAGE_KEY_SUBMISSIONS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
+    // If not in storage, initialize with sample submissions
+    localStorage.setItem(STORAGE_KEY_SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
+    return INITIAL_SUBMISSIONS;
   } catch (e) {
     console.error('Failed to load submissions from storage', e);
   }
-  return [];
+  return INITIAL_SUBMISSIONS;
 }
 
 export function saveSubmission(submission: OvertimeSubmission): void {
   try {
+    // Ensure totals are accurate
+    submission.totalOvertimeMinutes = submission.items.reduce((sum, i) => sum + (i.overtimeMinutes || 0), 0);
+    submission.originalTotalOvertimeMinutes = submission.items.reduce(
+      (sum, i) => sum + (i.originalOvertimeMinutes ?? i.overtimeMinutes ?? 0),
+      0
+    );
+
     const existing = getSubmissions();
     const idx = existing.findIndex((s) => s.id === submission.id);
     let updated: OvertimeSubmission[];
@@ -140,6 +227,101 @@ export function saveSubmission(submission: OvertimeSubmission): void {
   } catch (e) {
     console.error('Failed to save submission', e);
   }
+}
+
+/**
+ * Allows Team Leader to edit/correct the overtime minutes for an individual day
+ * (e.g. employee was not actually on overtime or added unverified hours).
+ */
+export function updateItemOvertimeAdjustment(
+  submissionId: string,
+  date: string,
+  newOvertimeMinutes: number,
+  adjustedReason: string = '',
+  approveAfterAdjust: boolean = false,
+  leaderName: string = 'Team Leader'
+): void {
+  const submissions = getSubmissions();
+  const sub = submissions.find((s) => s.id === submissionId);
+  if (!sub) return;
+
+  const item = sub.items.find((i) => i.date === date);
+  if (!item) return;
+
+  // Preserve original claim if this is the first adjustment
+  if (item.originalOvertimeMinutes === undefined) {
+    item.originalOvertimeMinutes = item.overtimeMinutes;
+  }
+
+  const validMinutes = Math.max(0, Math.round(newOvertimeMinutes));
+  item.overtimeMinutes = validMinutes;
+  item.isAdjustedByLeader = true;
+  item.adjustedReason = adjustedReason.trim();
+
+  if (approveAfterAdjust) {
+    item.status = 'approved';
+    item.decidedAt = new Date().toISOString();
+    item.decidedBy = leaderName;
+    item.leaderNotes = adjustedReason.trim()
+      ? `Adjusted to ${Math.floor(validMinutes / 60)}h ${validMinutes % 60}m: ${adjustedReason.trim()}`
+      : `Approved with adjusted duration (${Math.floor(validMinutes / 60)}h ${validMinutes % 60}m)`;
+  }
+
+  // Recalculate submission totals
+  sub.totalOvertimeMinutes = sub.items.reduce((acc, i) => acc + (i.overtimeMinutes || 0), 0);
+  sub.originalTotalOvertimeMinutes = sub.items.reduce(
+    (acc, i) => acc + (i.originalOvertimeMinutes ?? i.overtimeMinutes ?? 0),
+    0
+  );
+
+  // Update submission overall review metadata if approved
+  if (approveAfterAdjust) {
+    const allApproved = sub.items.every((i) => i.status === 'approved');
+    const allRejected = sub.items.every((i) => i.status === 'rejected');
+    const anyPending = sub.items.some((i) => i.status === 'pending');
+
+    if (allApproved) {
+      sub.status = 'approved';
+    } else if (allRejected) {
+      sub.status = 'rejected';
+    } else if (anyPending) {
+      sub.status = 'pending';
+    } else {
+      sub.status = 'approved';
+    }
+
+    sub.reviewedBy = leaderName;
+    sub.reviewedAt = new Date().toISOString();
+  }
+
+  saveSubmission(sub);
+}
+
+/**
+ * Reverts an item's overtime back to the original employee claimed duration
+ */
+export function resetItemOvertimeAdjustment(submissionId: string, date: string): void {
+  const submissions = getSubmissions();
+  const sub = submissions.find((s) => s.id === submissionId);
+  if (!sub) return;
+
+  const item = sub.items.find((i) => i.date === date);
+  if (!item) return;
+
+  if (item.originalOvertimeMinutes !== undefined) {
+    item.overtimeMinutes = item.originalOvertimeMinutes;
+  }
+  item.isAdjustedByLeader = false;
+  item.adjustedReason = undefined;
+
+  // Recalculate submission totals
+  sub.totalOvertimeMinutes = sub.items.reduce((acc, i) => acc + (i.overtimeMinutes || 0), 0);
+  sub.originalTotalOvertimeMinutes = sub.items.reduce(
+    (acc, i) => acc + (i.originalOvertimeMinutes ?? i.overtimeMinutes ?? 0),
+    0
+  );
+
+  saveSubmission(sub);
 }
 
 export function updateItemApproval(
