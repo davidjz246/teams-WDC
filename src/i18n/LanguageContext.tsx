@@ -362,16 +362,13 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem('app_language');
-    return (saved as Language) || 'en';
-  });
+  const [language, setLanguage] = useState<Language>('en');
 
   useEffect(() => {
-    localStorage.setItem('app_language', language);
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = language;
-  }, [language]);
+    localStorage.removeItem('app_language');
+    document.documentElement.dir = 'ltr';
+    document.documentElement.lang = 'en';
+  }, []);
 
   const t = (key: string, defaultText?: string): string => {
     const translation = translations[key]?.[language];

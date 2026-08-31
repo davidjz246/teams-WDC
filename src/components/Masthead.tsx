@@ -8,13 +8,11 @@ import {
   FileText, 
   Database,
   Calendar,
-  ChevronDown,
-  Globe
+  ChevronDown
 } from 'lucide-react';
 import { ActiveAppTab, ThemeMode, UserProfile } from '../types';
 import { WadiDeglaLogo } from './WadiDeglaLogo';
 import { getTeamUsers } from '../utils/teamDatabase';
-import { useLanguage } from '../i18n/LanguageContext';
 
 interface MastheadProps {
 
@@ -40,7 +38,6 @@ export const Masthead: React.FC<MastheadProps> = ({
   onOpenDatabaseModal,
   pendingApprovalsCount,
 }) => {
-  const { language, setLanguage } = useLanguage();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [teamUsers, setTeamUsers] = useState<UserProfile[]>(() => getTeamUsers());
 
@@ -173,32 +170,6 @@ export const Masthead: React.FC<MastheadProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset</span>
           </button>
-
-          {/* Language Switcher */}
-          <div className="flex items-center bg-card border border-border p-1 rounded-xl shadow-2xs">
-            <button
-              onClick={() => language !== 'en' && setLanguage('en')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
-                language === 'en'
-                  ? 'bg-muted text-foreground font-semibold shadow-2xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5 text-blue-500" />
-              <span>EN</span>
-            </button>
-            <button
-              onClick={() => language !== 'ar' && setLanguage('ar')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
-                language === 'ar'
-                  ? 'bg-muted text-foreground font-semibold shadow-2xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5 text-emerald-500" />
-              <span>AR</span>
-            </button>
-          </div>
 
           {/* Theme Switcher */}
           <div className="flex items-center bg-card border border-border p-1 rounded-xl shadow-2xs">
