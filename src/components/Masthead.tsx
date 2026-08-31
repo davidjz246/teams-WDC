@@ -8,13 +8,16 @@ import {
   FileText, 
   Database,
   Calendar,
-  ChevronDown
+  ChevronDown,
+  Globe
 } from 'lucide-react';
 import { ActiveAppTab, ThemeMode, UserProfile } from '../types';
 import { WadiDeglaLogo } from './WadiDeglaLogo';
 import { getTeamUsers } from '../utils/teamDatabase';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface MastheadProps {
+
   theme: ThemeMode;
   onToggleTheme: () => void;
   onResetSession: () => void;
@@ -37,8 +40,22 @@ export const Masthead: React.FC<MastheadProps> = ({
   onOpenDatabaseModal,
   pendingApprovalsCount,
 }) => {
+  const { language, setLanguage } = useLanguage();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const teamUsers = getTeamUsers();
+  const [teamUsers, setTeamUsers] = useState<UserProfile[]>(() => getTeamUsers());
+
+
+  React.useEffect(() => {
+    const handleUpdate = () => {
+      setTeamUsers(getTeamUsers());
+    };
+    window.addEventListener('team_users_updated', handleUpdate);
+    window.addEventListener('teams_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('team_users_updated', handleUpdate);
+      window.removeEventListener('teams_updated', handleUpdate);
+    };
+  }, []);
 
   // Check 14th of month payroll cutoff
   const today = new Date();
@@ -101,16 +118,18 @@ export const Masthead: React.FC<MastheadProps> = ({
               <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-card border border-border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border/80 flex items-center justify-between font-bold">
                   <span>Switch Profile</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserDropdownOpen(false);
-                      onOpenDatabaseModal();
-                    }}
-                    className="text-amber-500 hover:underline cursor-pointer"
-                  >
-                    + Manage
-                  </button>
+                  {(currentUser.role === 'team_leader' || currentUser.role === 'manager' || currentUser.role === 'admin') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        onOpenDatabaseModal();
+                      }}
+                      className="text-amber-500 hover:underline cursor-pointer"
+                    >
+                      + Manage
+                    </button>
+                  )}
                 </div>
 
                 <div className="max-h-56 overflow-y-auto space-y-1 py-1">
@@ -154,6 +173,32 @@ export const Masthead: React.FC<MastheadProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset</span>
           </button>
+
+          {/* Language Switcher */}
+          <div className="flex items-center bg-card border border-border p-1 rounded-xl shadow-2xs">
+            <button
+              onClick={() => language !== 'en' && setLanguage('en')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                language === 'en'
+                  ? 'bg-muted text-foreground font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-500" />
+              <span>EN</span>
+            </button>
+            <button
+              onClick={() => language !== 'ar' && setLanguage('ar')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                language === 'ar'
+                  ? 'bg-muted text-foreground font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-500" />
+              <span>AR</span>
+            </button>
+          </div>
 
           {/* Theme Switcher */}
           <div className="flex items-center bg-card border border-border p-1 rounded-xl shadow-2xs">
@@ -202,69 +247,6 @@ export const Masthead: React.FC<MastheadProps> = ({
         </div>
       </div>
 
-      {/* Main Navigation Tabs - Prominent Sticky Bar */}
-      <div className="bg-card/95 backdrop-blur-md border border-border rounded-2xl p-2 shadow-lg sticky top-2 z-40">
-        <div className="flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-2 flex-nowrap shrink-0">
-            {/* TAB 1: EMPLOYEE LEDGER */}
-            <button
-              type="button"
-              onClick={() => onChangeTab('employee_ledger')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'employee_ledger'
-                  ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                  : 'bg-muted/50 text-foreground hover:bg-muted border border-border/60'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Tab 1: My Timesheet</span>
-            </button>
-
-            {/* TAB 2: TEAM LEADER APPROVALS */}
-            <button
-              type="button"
-              onClick={() => onChangeTab('team_leader_approvals')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap relative ${
-                activeTab === 'team_leader_approvals'
-                  ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                  : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
-              }`}
-            >
-              <CheckSquare className="w-4 h-4" />
-              <span>Tab 2: Team Leader Approvals</span>
-              {pendingApprovalsCount > 0 && (
-                <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white animate-pulse">
-                  {pendingApprovalsCount} PENDING
-                </span>
-              )}
-            </button>
-
-            {/* TAB 3: MANAGER OVERVIEW */}
-            <button
-              type="button"
-              onClick={() => onChangeTab('manager_overview')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'manager_overview'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/30'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Tab 3: Manager Matrix</span>
-            </button>
-          </div>
-
-          {/* TAB 4: XAMPP CENTER */}
-          <button
-            type="button"
-            onClick={() => onOpenDatabaseModal()}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ml-auto bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/30 shadow-2xs"
-          >
-            <Database className="w-4 h-4" />
-            <span>Tab 4: Database Hub</span>
-          </button>
-        </div>
-      </div>
     </header>
   );
 };

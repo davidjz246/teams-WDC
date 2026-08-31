@@ -1,150 +1,394 @@
-import { ApprovalStatus, OvertimeSubmission, UserProfile, UserRole } from '../types';
+import { ApprovalStatus, OvertimeSubmission, TeamInfo, UserProfile, UserRole } from '../types';
+import { normalizeEmployeeId } from './employeeDirectory';
+
+export const DEFAULT_TEAMS: TeamInfo[] = [];
 
 export const DEFAULT_USERS: UserProfile[] = [
   {
-    id: 'usr_32272',
-    sapId: '32272',
-    name: 'David Joseph Zakria',
-    role: 'employee',
-    email: 'david.j@wadidegla.com',
-    department: 'IT & Digital Systems',
-    title: 'Systems Specialist',
-  },
-  {
-    id: 'usr_18492',
-    sapId: '18492',
-    name: 'Omar Farouk Mostafa',
-    role: 'employee',
-    email: 'omar.farouk@wadidegla.com',
-    department: 'Operations & Facilities',
-    title: 'Operations Coordinator',
-  },
-  {
-    id: 'usr_24110',
-    sapId: '24110',
-    name: 'Mariam Khaled Abdelrahman',
-    role: 'employee',
-    email: 'mariam.k@wadidegla.com',
-    department: 'Finance & Payroll',
-    title: 'Accountant',
-  },
-  {
-    id: 'usr_30198',
-    sapId: '30198',
-    name: 'Ahmed Hassan El-Shazly',
-    role: 'employee',
-    email: 'ahmed.hassan@wadidegla.com',
-    department: 'IT & Digital Systems',
-    title: 'Technical Support Engineer',
-  },
-  {
-    id: 'usr_10405',
-    sapId: '10405',
-    name: 'Mohamed El-Sayed (Team Leader)',
-    role: 'team_leader',
-    email: 'mohamed.elsayed@wadidegla.com',
-    department: 'Operations & IT',
-    title: 'IT & Operations Team Leader',
-  },
-  {
-    id: 'usr_10012',
-    sapId: '10012',
-    name: 'Tarek Mansour (Manager)',
-    role: 'manager',
-    email: 'tarek.mansour@wadidegla.com',
-    department: 'Executive Management',
-    title: 'Director of Operations & HR',
+    id: 'usr_admin',
+    sapId: '9999',
+    name: 'Admin',
+    role: 'admin',
+    email: 'admin@wadidegla.com',
+    department: 'Management Information Systems',
+    title: 'System Administrator',
   },
 ];
 
-const STORAGE_KEY_USERS = 'wdc_team_users_v2';
-const STORAGE_KEY_ACTIVE_USER = 'wdc_active_user_id_v2';
-const STORAGE_KEY_SUBMISSIONS = 'wdc_team_submissions_v3';
-
-export const INITIAL_SUBMISSIONS: OvertimeSubmission[] = [
-  {
-    id: 'sub_18492_aug2026',
-    employeeId: '18492',
-    employeeName: 'Omar Farouk Mostafa',
-    department: 'Operations & Facilities',
-    periodLabel: '16 Jul 2026 – 15 Aug 2026',
-    submittedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: 'pending',
-    totalOvertimeMinutes: 345, // 5 hrs 45 mins claimed
-    originalTotalOvertimeMinutes: 345,
-    items: [
-      {
-        date: '2026.07.21',
-        dayOfWeek: 'Tue',
-        startTime: '08:45:00',
-        endTime: '19:15:00',
-        shiftEndStandard: '16:00',
-        overtimeMinutes: 195, // 3h 15m claimed (after 4 PM Tuesday)
-        originalOvertimeMinutes: 195,
-        reason: 'Emergency facility inspection and clubhouse maintenance handover.',
-        category: 'overtime_manual',
-        status: 'pending',
-      },
-      {
-        date: '2026.07.28',
-        dayOfWeek: 'Tue',
-        startTime: '08:50:00',
-        endTime: '18:30:00',
-        shiftEndStandard: '16:00',
-        overtimeMinutes: 150, // 2h 30m claimed
-        originalOvertimeMinutes: 150,
-        reason: 'Late shift sports equipment inventory count and supplier delivery verification.',
-        category: 'overtime_manual',
-        status: 'pending',
-      },
-    ],
-  },
-  {
-    id: 'sub_30198_aug2026',
-    employeeId: '30198',
-    employeeName: 'Ahmed Hassan El-Shazly',
-    department: 'IT & Digital Systems',
-    periodLabel: '16 Jul 2026 – 15 Aug 2026',
-    submittedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    status: 'pending',
-    totalOvertimeMinutes: 270, // 4h 30m claimed
-    originalTotalOvertimeMinutes: 270,
-    items: [
-      {
-        date: '2026.07.22',
-        dayOfWeek: 'Wed',
-        startTime: '08:40:00',
-        endTime: '20:10:00',
-        shiftEndStandard: '17:00',
-        overtimeMinutes: 190, // 3h 10m claimed
-        originalOvertimeMinutes: 190,
-        reason: 'Core network switch upgrade and server room UPS backup battery replacement.',
-        category: 'overtime_manual',
-        status: 'pending',
-      },
-      {
-        date: '2026.08.03',
-        dayOfWeek: 'Mon',
-        startTime: '08:55:00',
-        endTime: '18:20:00',
-        shiftEndStandard: '17:00',
-        overtimeMinutes: 80, // 1h 20m claimed
-        originalOvertimeMinutes: 80,
-        reason: 'Supported finance team with month-end SAP ERP ledger closing queries.',
-        category: 'overtime_manual',
-        status: 'pending',
-      },
-    ],
-  },
+const STORAGE_KEY_TEAMS = 'wdc_teams_structure_v8';
+const STORAGE_KEY_USERS = 'wdc_team_users_v8';
+const STORAGE_KEY_ACTIVE_USER = 'wdc_active_user_id_v8';
+const STORAGE_KEY_SUBMISSIONS = 'wdc_team_submissions_v8';
+const LEGACY_STORAGE_KEYS = [
+  'wdc_teams_structure_v5',
+  'wdc_teams_structure_v6',
+  'wdc_teams_structure_v7',
+  'wdc_team_users',
+  'wdc_team_users_v2',
+  'wdc_team_users_v3',
+  'wdc_team_users_v4',
+  'wdc_team_users_v5',
+  'wdc_team_users_v6',
+  'wdc_team_users_v7',
+  'wdc_active_user_id',
+  'wdc_active_user_id_v2',
+  'wdc_active_user_id_v3',
+  'wdc_active_user_id_v4',
+  'wdc_active_user_id_v5',
+  'wdc_active_user_id_v6',
+  'wdc_active_user_id_v7',
+  'wdc_team_submissions',
+  'wdc_team_submissions_v2',
+  'wdc_team_submissions_v3',
+  'wdc_team_submissions_v4',
+  'wdc_team_submissions_v5',
+  'wdc_team_submissions_v6',
+  'wdc_team_submissions_v7',
 ];
+
+export const INITIAL_SUBMISSIONS: OvertimeSubmission[] = [];
+
+/**
+ * Retrieves all organized teams
+ */
+export function getTeams(): TeamInfo[] {
+  try {
+    for (const key of LEGACY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+    const raw = localStorage.getItem(STORAGE_KEY_TEAMS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+    localStorage.setItem(STORAGE_KEY_TEAMS, JSON.stringify(DEFAULT_TEAMS));
+  } catch (e) {
+    console.error('Failed to load teams', e);
+  }
+  return DEFAULT_TEAMS;
+}
+
+/**
+ * Saves team structure
+ */
+export function saveTeams(teams: TeamInfo[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_TEAMS, JSON.stringify(teams));
+    window.dispatchEvent(new CustomEvent('teams_updated', { detail: teams }));
+  } catch (e) {
+    console.error('Failed to save teams', e);
+  }
+}
+
+/**
+ * Creates or updates a team (Admin authorization)
+ * Automatically provisions or updates Team Leader and Reporting Manager accounts
+ * in the system roster with their respective roles ('team_leader' and 'manager').
+ */
+export function upsertTeam(team: TeamInfo): void {
+  upsertMultipleTeams([team]);
+}
+
+/**
+ * Creates or updates multiple teams at once (Batch creation under a department/manager)
+ */
+export function upsertMultipleTeams(teamsToAdd: TeamInfo[]): void {
+  if (!teamsToAdd.length) return;
+  const current = getTeams();
+  let nextTeams = [...current];
+
+  for (const team of teamsToAdd) {
+    const index = nextTeams.findIndex((t) => t.id === team.id);
+    if (index >= 0) {
+      nextTeams[index] = team;
+    } else {
+      nextTeams.push(team);
+    }
+  }
+  saveTeams(nextTeams);
+
+  // Auto-sync / auto-create Leaders and Managers in the user roster
+  const users = getTeamUsers();
+  let updatedUsers = [...users];
+
+  for (const team of teamsToAdd) {
+    const cleanLeaderSap = normalizeEmployeeId(team.leaderSapId);
+    const cleanManagerSap = normalizeEmployeeId(team.managerSapId);
+
+    // 1. Auto-provision or update Team Leader
+    if (cleanLeaderSap) {
+      const leaderIdx = updatedUsers.findIndex((u) => normalizeEmployeeId(u.sapId) === cleanLeaderSap);
+      const leaderName = team.leaderName?.trim() || `Team Leader (${cleanLeaderSap})`;
+      if (leaderIdx >= 0) {
+        const existing = updatedUsers[leaderIdx];
+        updatedUsers[leaderIdx] = {
+          ...existing,
+          name: team.leaderName?.trim() || existing.name,
+          role: existing.role === 'admin' ? 'admin' : 'team_leader',
+          title: existing.title === 'Operations Specialist' || !existing.title ? 'Team Leader' : existing.title,
+          department: team.department || existing.department || 'Operations & Facilities',
+          teamId: team.id,
+          teamName: team.name,
+        };
+      } else {
+        updatedUsers.push({
+          id: `usr_tl_${cleanLeaderSap}`,
+          sapId: cleanLeaderSap,
+          name: leaderName,
+          role: 'team_leader',
+          email: `${leaderName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@wadidegla.com`,
+          department: team.department || 'Operations & Facilities',
+          title: 'Team Leader',
+          teamId: team.id,
+          teamName: team.name,
+        });
+      }
+    }
+
+    // 2. Auto-provision or update Reporting Manager
+    if (cleanManagerSap) {
+      const managerIdx = updatedUsers.findIndex((u) => normalizeEmployeeId(u.sapId) === cleanManagerSap);
+      const managerName = team.managerName?.trim() || `Reporting Manager (${cleanManagerSap})`;
+      if (managerIdx >= 0) {
+        const existing = updatedUsers[managerIdx];
+        updatedUsers[managerIdx] = {
+          ...existing,
+          name: team.managerName?.trim() || existing.name,
+          role: existing.role === 'admin' ? 'admin' : 'manager',
+          title: existing.title === 'Operations Specialist' || !existing.title ? 'Operations Director' : existing.title,
+          department: team.department || existing.department || 'Operations & Facilities',
+        };
+      } else {
+        updatedUsers.push({
+          id: `usr_mgr_${cleanManagerSap}`,
+          sapId: cleanManagerSap,
+          name: managerName,
+          role: 'manager',
+          email: `${managerName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@wadidegla.com`,
+          department: team.department || 'Operations & Facilities',
+          title: 'Operations Director',
+        });
+      }
+    }
+
+    // 3. Update team attributes for all members assigned to this team
+    updatedUsers = updatedUsers.map((u) => {
+      if (u.teamId === team.id || team.memberSapIds?.some((m) => normalizeEmployeeId(m) === normalizeEmployeeId(u.sapId))) {
+        return {
+          ...u,
+          teamId: team.id,
+          teamName: team.name,
+          teamLeaderSapId: team.leaderSapId,
+          teamLeaderName: team.leaderName,
+          managerSapId: team.managerSapId,
+          managerName: team.managerName,
+        };
+      }
+      return u;
+    });
+  }
+
+  saveTeamUsers(updatedUsers);
+}
+
+/**
+ * Deletes a team (Admin authorization)
+ */
+export function deleteTeam(teamId: string): void {
+  const current = getTeams();
+  const nextTeams = current.filter((t) => t.id !== teamId);
+  saveTeams(nextTeams);
+}
+
+/**
+ * Assigns an employee or team leader to a team (Admin authorization)
+ */
+export function assignUserToTeam(sapId: string, targetTeamId: string): void {
+  const cleanSap = normalizeEmployeeId(sapId);
+  if (!cleanSap) return;
+
+  const currentTeams = getTeams();
+  const updatedTeams = currentTeams.map((team) => {
+    // Remove from other teams
+    const withoutMember = team.memberSapIds.filter((m) => normalizeEmployeeId(m) !== cleanSap);
+    if (team.id === targetTeamId) {
+      return {
+        ...team,
+        memberSapIds: Array.from(new Set([...withoutMember, cleanSap])),
+      };
+    }
+    return {
+      ...team,
+      memberSapIds: withoutMember,
+    };
+  });
+  saveTeams(updatedTeams);
+
+  // Update user record if present
+  const users = getTeamUsers();
+  const targetTeam = updatedTeams.find((t) => t.id === targetTeamId);
+  const updatedUsers = users.map((u) => {
+    if (normalizeEmployeeId(u.sapId) === cleanSap) {
+      return {
+        ...u,
+        teamId: targetTeam?.id,
+        teamName: targetTeam?.name,
+        teamLeaderSapId: targetTeam?.leaderSapId,
+        teamLeaderName: targetTeam?.leaderName,
+        managerSapId: targetTeam?.managerSapId,
+        managerName: targetTeam?.managerName,
+      };
+    }
+    return u;
+  });
+  saveTeamUsers(updatedUsers);
+}
+
+/**
+ * Assigns a Team Leader to a team (Admin authorization)
+ */
+export function assignTeamLeader(teamId: string, leaderSapId: string, leaderName: string): void {
+  const cleanLeaderSap = normalizeEmployeeId(leaderSapId);
+  const teams = getTeams();
+  const updatedTeams = teams.map((team) => {
+    if (team.id === teamId) {
+      return {
+        ...team,
+        leaderSapId: cleanLeaderSap,
+        leaderName: leaderName.trim(),
+      };
+    }
+    return team;
+  });
+  saveTeams(updatedTeams);
+
+  // Also update users in this team
+  const targetTeam = updatedTeams.find((t) => t.id === teamId);
+  if (targetTeam) {
+    const users = getTeamUsers();
+    const updatedUsers = users.map((u) => {
+      if (u.teamId === teamId) {
+        return {
+          ...u,
+          teamLeaderSapId: targetTeam.leaderSapId,
+          teamLeaderName: targetTeam.leaderName,
+        };
+      }
+      if (normalizeEmployeeId(u.sapId) === cleanLeaderSap) {
+        return {
+          ...u,
+          role: 'team_leader' as UserRole,
+          teamId: targetTeam.id,
+          teamName: targetTeam.name,
+        };
+      }
+      return u;
+    });
+    saveTeamUsers(updatedUsers);
+  }
+}
+
+/**
+ * Assigns a Manager to a team (Admin authorization)
+ */
+export function assignTeamManager(teamId: string, managerSapId: string, managerName: string): void {
+  const cleanManagerSap = normalizeEmployeeId(managerSapId);
+  const teams = getTeams();
+  const updatedTeams = teams.map((team) => {
+    if (team.id === teamId) {
+      return {
+        ...team,
+        managerSapId: cleanManagerSap,
+        managerName: managerName.trim(),
+      };
+    }
+    return team;
+  });
+  saveTeams(updatedTeams);
+
+  // Update user profiles in this team with the new manager
+  const users = getTeamUsers();
+  const updatedUsers = users.map((u) => {
+    if (u.teamId === teamId) {
+      return {
+        ...u,
+        managerSapId: cleanManagerSap,
+        managerName: managerName.trim(),
+      };
+    }
+    if (normalizeEmployeeId(u.sapId) === cleanManagerSap) {
+      return {
+        ...u,
+        role: 'manager' as UserRole,
+      };
+    }
+    return u;
+  });
+  saveTeamUsers(updatedUsers);
+}
+
+/**
+ * Finds team by Team ID
+ */
+export function getTeamById(teamId: string): TeamInfo | undefined {
+  const teams = getTeams();
+  return teams.find((t) => t.id === teamId);
+}
+
+/**
+ * Finds team for an employee or leader SAP ID
+ */
+export function getTeamForSapId(sapId: string): TeamInfo | undefined {
+  const cleanId = normalizeEmployeeId(sapId);
+  if (!cleanId) return undefined;
+
+  const teams = getTeams();
+  // 1. Is leader of a team?
+  const asLeader = teams.find((t) => normalizeEmployeeId(t.leaderSapId) === cleanId);
+  if (asLeader) return asLeader;
+
+  // 2. Is member of a team?
+  const asMember = teams.find((t) => t.memberSapIds.some((m) => normalizeEmployeeId(m) === cleanId));
+  if (asMember) return asMember;
+
+  return undefined;
+}
 
 export function getTeamUsers(): UserProfile[] {
   try {
+    // Clear previous storage keys with old demo profiles
+    for (const key of LEGACY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        // Ensure at least one Admin profile exists and any user named 'admin' is properly typed as role 'admin'
+        let hasAdmin = false;
+        const normalizedList: UserProfile[] = parsed.map((u: UserProfile) => {
+          if (u.role === 'admin') {
+            hasAdmin = true;
+            return u;
+          }
+          if (u.name?.toLowerCase() === 'admin' || u.sapId === '9999') {
+            hasAdmin = true;
+            return {
+              ...u,
+              role: 'admin' as UserRole,
+              title: u.title || 'System Administrator',
+            };
+          }
+          return u;
+        });
+
+        if (!hasAdmin) {
+          normalizedList.unshift(DEFAULT_USERS[0]);
+        }
+        return normalizedList;
       }
     }
   } catch (e) {
@@ -173,7 +417,7 @@ export function getActiveUser(): UserProfile {
   } catch (e) {
     console.error(e);
   }
-  // Default to first user or a clean employee profile
+  // Default to first user
   return users[0] || DEFAULT_USERS[0];
 }
 
@@ -191,11 +435,10 @@ export function getSubmissions(): OvertimeSubmission[] {
     const raw = localStorage.getItem(STORAGE_KEY_SUBMISSIONS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
-    // If not in storage, initialize with sample submissions
     localStorage.setItem(STORAGE_KEY_SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
     return INITIAL_SUBMISSIONS;
   } catch (e) {
@@ -204,8 +447,70 @@ export function getSubmissions(): OvertimeSubmission[] {
   return INITIAL_SUBMISSIONS;
 }
 
+/**
+ * Access Control: Filters submissions so that:
+ * 1. Employees can only access data within their assigned team / own submissions.
+ * 2. Team Leaders can only access submissions from their own team members.
+ * 3. Managers / Admins can access all teams.
+ */
+export function filterSubmissionsForUser(
+  submissions: OvertimeSubmission[],
+  user: UserProfile
+): OvertimeSubmission[] {
+  if (!user) return [];
+
+  // Managers and Admins can view all submissions across all teams
+  if (user.role === 'manager' || user.role === 'admin') {
+    return submissions;
+  }
+
+  const userCleanSap = normalizeEmployeeId(user.sapId);
+  const userTeam = getTeamForSapId(userCleanSap) || (user.teamId ? getTeamById(user.teamId) : undefined);
+
+  // Team Leader: Can ONLY view submissions from their team
+  if (user.role === 'team_leader') {
+    return submissions.filter((sub) => {
+      const subCleanSap = normalizeEmployeeId(sub.employeeId);
+      const subTeamId = sub.teamId;
+      const subLeaderSap = normalizeEmployeeId(sub.teamLeaderSapId || '');
+
+      // Direct match if assigned to this leader
+      if (subLeaderSap && subLeaderSap === userCleanSap) return true;
+
+      // Match by team ID
+      if (userTeam && subTeamId && subTeamId === userTeam.id) return true;
+
+      // Match by member list in team
+      if (userTeam && userTeam.memberSapIds.some((m) => normalizeEmployeeId(m) === subCleanSap)) return true;
+
+      return false;
+    });
+  }
+
+  // Employee: Can ONLY view their own submissions within their team (strictly isolated from other teams)
+  return submissions.filter((sub) => {
+    const subCleanSap = normalizeEmployeeId(sub.employeeId);
+    if (subCleanSap === userCleanSap) return true;
+    if (sub.employeeName.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
+    return false;
+  });
+}
+
 export function saveSubmission(submission: OvertimeSubmission): void {
   try {
+    // Ensure numeric SAP ID
+    submission.employeeId = normalizeEmployeeId(submission.employeeId);
+
+    // Auto-attach team details if missing
+    if (!submission.teamId || !submission.teamLeaderSapId) {
+      const team = getTeamForSapId(submission.employeeId);
+      if (team) {
+        submission.teamId = team.id;
+        submission.teamName = team.name;
+        submission.teamLeaderSapId = team.leaderSapId;
+      }
+    }
+
     // Ensure totals are accurate
     submission.totalOvertimeMinutes = submission.items.reduce((sum, i) => sum + (i.overtimeMinutes || 0), 0);
     submission.originalTotalOvertimeMinutes = submission.items.reduce(
@@ -364,6 +669,17 @@ export function updateItemApproval(
   saveSubmission(sub);
 }
 
+export function deleteSubmission(submissionId: string): void {
+  try {
+    const existing = getSubmissions();
+    const filtered = existing.filter((s) => s.id !== submissionId);
+    localStorage.setItem(STORAGE_KEY_SUBMISSIONS, JSON.stringify(filtered));
+    window.dispatchEvent(new CustomEvent('team_submissions_updated', { detail: filtered }));
+  } catch (e) {
+    console.error('Failed to delete submission', e);
+  }
+}
+
 export function updateEntireSubmissionStatus(
   submissionId: string,
   status: ApprovalStatus,
@@ -413,7 +729,17 @@ CREATE TABLE IF NOT EXISTS \`departments\` (
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Users Table with Role Permissions (Employee, Team Leader, Manager, Admin)
+-- 2. Teams Table with Team Leader Mapping
+CREATE TABLE IF NOT EXISTS \`teams\` (
+  \`id\` VARCHAR(32) PRIMARY KEY,
+  \`name\` VARCHAR(100) NOT NULL,
+  \`leader_sap_id\` VARCHAR(20) NOT NULL,
+  \`department_id\` INT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (\`department_id\`) REFERENCES \`departments\`(\`id\`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Users Table with Role Permissions & Team Isolation
 CREATE TABLE IF NOT EXISTS \`users\` (
   \`id\` INT AUTO_INCREMENT PRIMARY KEY,
   \`sap_id\` VARCHAR(20) NOT NULL UNIQUE,
@@ -421,19 +747,22 @@ CREATE TABLE IF NOT EXISTS \`users\` (
   \`email\` VARCHAR(150) NOT NULL UNIQUE,
   \`role\` ENUM('employee', 'team_leader', 'manager', 'admin') NOT NULL DEFAULT 'employee',
   \`department_id\` INT NULL,
+  \`team_id\` VARCHAR(32) NULL,
   \`title\` VARCHAR(100) NULL,
   \`password_hash\` VARCHAR(255) NULL,
   \`status\` ENUM('active', 'inactive') DEFAULT 'active',
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`department_id\`) REFERENCES \`departments\`(\`id\`) ON DELETE SET NULL
+  FOREIGN KEY (\`department_id\`) REFERENCES \`departments\`(\`id\`) ON DELETE SET NULL,
+  FOREIGN KEY (\`team_id\`) REFERENCES \`teams\`(\`id\`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Overtime Submissions Table (16th to 15th monthly cycle)
+-- 4. Overtime Submissions Table (16th to 15th monthly cycle)
 CREATE TABLE IF NOT EXISTS \`overtime_submissions\` (
   \`id\` VARCHAR(64) PRIMARY KEY,
   \`user_sap_id\` VARCHAR(20) NOT NULL,
   \`user_name\` VARCHAR(150) NOT NULL,
   \`department\` VARCHAR(100) NOT NULL,
+  \`team_id\` VARCHAR(32) NULL,
   \`period_label\` VARCHAR(100) NOT NULL,
   \`total_overtime_minutes\` INT NOT NULL DEFAULT 0,
   \`status\` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
@@ -443,10 +772,11 @@ CREATE TABLE IF NOT EXISTS \`overtime_submissions\` (
   \`leader_comments\` TEXT NULL,
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX \`idx_sap\` (\`user_sap_id\`),
+  INDEX \`idx_team\` (\`team_id\`),
   INDEX \`idx_status\` (\`status\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. Overtime Daily Items & Mandatory Reasons
+-- 5. Overtime Daily Items & Mandatory Reasons
 CREATE TABLE IF NOT EXISTS \`overtime_day_items\` (
   \`id\` INT AUTO_INCREMENT PRIMARY KEY,
   \`submission_id\` VARCHAR(64) NOT NULL,
@@ -465,22 +795,17 @@ CREATE TABLE IF NOT EXISTS \`overtime_day_items\` (
   FOREIGN KEY (\`submission_id\`) REFERENCES \`overtime_submissions\`(\`id\`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. Insert Initial Default Roles & Users
+-- 6. Insert Initial Default Administrator
 INSERT INTO \`departments\` (\`id\`, \`name\`, \`code\`) VALUES
-(1, 'IT & Digital Systems', 'IT_DEPT'),
+(1, 'Management Information Systems', 'MIS_DEPT'),
 (2, 'Operations & Facilities', 'OPS_DEPT'),
-(3, 'Finance & Payroll', 'FIN_DEPT'),
-(4, 'Executive Management', 'EXEC_DEPT')
+(3, 'IT & Digital Systems', 'IT_DEPT'),
+(4, 'Finance & Payroll', 'FIN_DEPT')
 ON DUPLICATE KEY UPDATE \`name\`=\`name\`;
 
 INSERT INTO \`users\` (\`sap_id\`, \`name\`, \`email\`, \`role\`, \`department_id\`, \`title\`) VALUES
-('32272', 'David Joseph Zakria', 'david.j@wadidegla.com', 'employee', 1, 'Systems Specialist'),
-('18492', 'Omar Farouk Mostafa', 'omar.farouk@wadidegla.com', 'employee', 2, 'Operations Coordinator'),
-('24110', 'Mariam Khaled Abdelrahman', 'mariam.k@wadidegla.com', 'employee', 3, 'Accountant'),
-('30198', 'Ahmed Hassan El-Shazly', 'ahmed.hassan@wadidegla.com', 'employee', 1, 'Technical Support Engineer'),
-('10405', 'Mohamed El-Sayed', 'mohamed.elsayed@wadidegla.com', 'team_leader', 1, 'IT & Operations Team Leader'),
-('10012', 'Tarek Mansour', 'tarek.mansour@wadidegla.com', 'manager', 4, 'Director of Operations & HR')
-ON DUPLICATE KEY UPDATE \`name\`=\`name\`;
+('9999', 'Admin', 'admin@wadidegla.com', 'admin', 1, 'System Administrator')
+ON DUPLICATE KEY UPDATE \`role\`='admin', \`name\`='Admin';
 `;
 }
 

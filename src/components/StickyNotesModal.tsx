@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StickyNote, Upload, Check, AlertCircle, Sparkles, X, Clock, Calendar } from 'lucide-react';
 import { parseStickyNotes } from '../utils/parser';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface StickyNotesModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
   overtimeDates = [],
   existingReasons = {},
 }) => {
+  const { t, language } = useLanguage();
   const [noteText, setNoteText] = useState('');
 
   // When modal opens, prefill with detected overtime dates and any existing reasons if noteText is empty
@@ -59,6 +61,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted cursor-pointer"
+          title={t('common.close', 'Close')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -68,10 +71,9 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
             <StickyNote className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-foreground">Import Overtime Sticky Notes</h3>
-            <p className="text-xs font-mono text-muted-foreground">
-              Sync justifications from Windows Sticky Notes, Notepad, or text logs
-            </p>
+            <h3 className="text-lg font-bold text-foreground">
+              {t('sticky.title', 'Import Overtime Sticky Notes')}
+            </h3>
           </div>
         </div>
 
@@ -80,7 +82,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-foreground">
               <Clock className="w-3.5 h-3.5 text-amber-500" />
-              <span>Detected Overtime Dates ({overtimeDates.length}):</span>
+              <span>{t('sticky.detected_dates', 'Detected Overtime Dates ({count}):').replace('{count}', String(overtimeDates.length))}</span>
             </div>
             {overtimeDates.length > 0 && (
               <button
@@ -88,12 +90,12 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
                 onClick={handleInsertTemplate}
                 className="text-[11px] font-mono text-amber-500 hover:text-amber-400 font-semibold cursor-pointer underline"
               >
-                Insert Dates Template
+                {t('sticky.insert_template', 'Insert Dates Template')}
               </button>
             )}
           </div>
 
-          {overtimeDates.length > 0 ? (
+          {overtimeDates.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {overtimeDates.map((date) => {
                 const hasReason = parsed[date] || existingReasons[date];
@@ -112,17 +114,8 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
                 );
               })}
             </div>
-          ) : (
-            <p className="text-[11px] font-mono text-muted-foreground italic">
-              No overtime days detected in the current ledger.
-            </p>
           )}
         </div>
-
-        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-          Paste your notes below. The parser automatically matches lines with dates (e.g.{' '}
-          <span className="font-mono text-amber-500 font-semibold">2026.08.03: Reason</span>) to your overtime ledger.
-        </p>
 
         <textarea
           value={noteText}
@@ -137,7 +130,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
             <div className="flex items-center justify-between text-muted-foreground mb-1.5">
               <span className="font-bold text-foreground flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
-                {parsedCount} {parsedCount === 1 ? 'Reason' : 'Reasons'} Parsed &amp; Ready
+                {t('sticky.parsed_ready', '{count} Reasons Parsed & Ready').replace('{count}', String(parsedCount))}
               </span>
             </div>
             <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
@@ -156,7 +149,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-xs font-mono font-medium hover:bg-muted text-muted-foreground cursor-pointer"
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </button>
           <button
             onClick={handleApply}
@@ -164,7 +157,7 @@ export const StickyNotesModal: React.FC<StickyNotesModalProps> = ({
             className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 shadow-md shadow-amber-500/20 flex items-center gap-2 cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>Apply {parsedCount} Reasons</span>
+            <span>{t('sticky.apply_btn', 'Apply {count} Reasons').replace('{count}', String(parsedCount))}</span>
           </button>
         </div>
       </div>

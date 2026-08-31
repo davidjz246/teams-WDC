@@ -14,6 +14,8 @@ import {
   Upload,
   Database,
   ArrowRight,
+  Building,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   getAllEmployees,
@@ -21,7 +23,11 @@ import {
   deleteEmployeeMapping,
   clearAllEmployeeDirectory,
   normalizeEmployeeId,
+  checkDuplicateEmployeeOrUser,
 } from '../utils/employeeDirectory';
+import { getTeams } from '../utils/teamDatabase';
+import { EmployeeRecord, TeamInfo } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface EmployeeDirectoryModalProps {
   isOpen: boolean;
@@ -36,17 +42,25 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
   onSelectEmployee,
   currentId,
 }) => {
-  const [employees, setEmployees] = useState<{ id: string; name: string }[]>([]);
+  const { t, language } = useLanguage();
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [teams, setTeams] = useState<TeamInfo[]>(() => getTeams());
   const [searchQuery, setSearchQuery] = useState('');
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isConfirmingClearAll, setIsConfirmingClearAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const liveConflict = (newId.trim() || newName.trim()) 
+    ? checkDuplicateEmployeeOrUser(newId, newName) 
+    : { hasConflict: false };
+
   const reloadEmployees = () => {
     setEmployees(getAllEmployees());
+    setTeams(getTeams());
   };
 
   useEffect(() => {
@@ -56,6 +70,10 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
       setSuccessMessage(null);
       setDeletingId(null);
       setIsConfirmingClearAll(false);
+      const allTeams = getTeams();
+      if (allTeams.length > 0 && !selectedTeamId) {
+        setSelectedTeamId(allTeams[0].id);
+      }
     }
   }, [isOpen]);
 
@@ -65,7 +83,11 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
       reloadEmployees();
     };
     window.addEventListener('employee_directory_updated', handleUpdate);
-    return () => window.removeEventListener('employee_directory_updated', handleUpdate);
+    window.addEventListener('teams_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('employee_directory_updated', handleUpdate);
+      window.removeEventListener('teams_updated', handleUpdate);
+    };
   }, []);
 
   if (!isOpen) return null;
@@ -76,15 +98,30 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
     const cleanName = newName.trim();
     if (!cleanId || !cleanName) return;
 
-    // 1. Save to local database
-    saveEmployeeMapping(cleanId, cleanName);
+    // Check for duplicate SAP ID or Duplicate Name across the app
+    const dupCheck = checkDuplicateEmployeeOrUser(cleanId, cleanName);
+    if (dupCheck.hasConflict) {
+      alert(`⚠️ ${t('dir.dup_err', 'Duplication Error')}:\n${dupCheck.conflictMessage}`);
+      return;
+    }
+
+    const team = teams.find((t) => t.id === selectedTeamId);
+
+    // 1. Save to local database with team metadata
+    saveEmployeeMapping(cleanId, cleanName, {
+      teamId: team?.id,
+      teamName: team?.name,
+      teamLeaderSapId: team?.leaderSapId,
+      teamLeaderName: team?.leaderName,
+      department: team?.department,
+    });
 
     // 2. Automatically select and activate for the current session
     onSelectEmployee(cleanId, cleanName);
 
     // 3. Refresh directory state
     reloadEmployees();
-    setSuccessMessage(`✓ Saved & Activated: ID #${cleanId} — ${cleanName}`);
+    setSuccessMessage(`✓ ${t('dir.saved_activated', 'Saved & Activated')}: ID #${cleanId} — ${cleanName}`);
     setNewId('');
     setNewName('');
 
@@ -118,13 +155,13 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
     onSelectEmployee('', '');
     reloadEmployees();
     setIsConfirmingClearAll(false);
-    setSuccessMessage('Cleared all local employee records');
+    setSuccessMessage(t('dir.cleared_all', 'Cleared all local employee records'));
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const handleClearSelection = () => {
     onSelectEmployee('', '');
-    setSuccessMessage('Unselected active employee');
+    setSuccessMessage(t('dir.unselected', 'Unselected active employee'));
     setTimeout(() => setSuccessMessage(null), 2500);
   };
 
@@ -141,7 +178,7 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
   };
 
   // Import directory from JSON
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -152,68 +189,84 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
         const parsed = JSON.parse(content);
         if (Array.isArray(parsed)) {
           let count = 0;
-          for (const item of parsed) {
-            if (item.id && item.name) {
-              saveEmployeeMapping(String(item.id), String(item.name));
-              count++;
+          parsed.forEach((item: any) => {
+            if (item && (item.id || item.employeeId) && (item.name || item.employeeName)) {
+              const id = normalizeEmployeeId(item.id || item.employeeId);
+              const name = (item.name || item.employeeName || '').trim();
+              if (id && name) {
+                saveEmployeeMapping(id, name, {
+                  teamId: item.teamId,
+                  teamName: item.teamName,
+                  teamLeaderSapId: item.teamLeaderSapId,
+                  teamLeaderName: item.teamLeaderName,
+                });
+                count++;
+              }
             }
-          }
+          });
           reloadEmployees();
-          setSuccessMessage(`Imported ${count} employees into local database!`);
-        } else if (typeof parsed === 'object') {
+          setSuccessMessage(`Imported ${count} employee records successfully`);
+          setTimeout(() => setSuccessMessage(null), 4000);
+        } else if (typeof parsed === 'object' && parsed !== null) {
           let count = 0;
-          for (const [id, name] of Object.entries(parsed)) {
+          Object.entries(parsed).forEach(([key, val]) => {
+            const id = normalizeEmployeeId(key);
+            const name = typeof val === 'string' ? val.trim() : (val as any)?.name?.trim();
             if (id && name) {
-              saveEmployeeMapping(id, String(name));
+              saveEmployeeMapping(id, name);
               count++;
             }
-          }
+          });
           reloadEmployees();
-          setSuccessMessage(`Imported ${count} employees into local database!`);
+          setSuccessMessage(`Imported ${count} employee records`);
+          setTimeout(() => setSuccessMessage(null), 4000);
+        } else {
+          alert('Invalid JSON structure. Expected array of employee records.');
         }
       } catch (err) {
-        console.error('Import failed', err);
-        setSuccessMessage('Failed to import file. Please check file format.');
+        alert('Failed to parse JSON file.');
       }
     };
     reader.readAsText(file);
     if (e.target) e.target.value = '';
   };
 
-  const normalizedCurrentId = normalizeEmployeeId(currentId);
-
   const filteredEmployees = employees.filter(
     (emp) =>
-      emp.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase())
+      emp.id.includes(searchQuery.trim()) ||
+      emp.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+      (emp.teamName && emp.teamName.toLowerCase().includes(searchQuery.toLowerCase().trim()))
   );
 
+  const normalizedCurrentId = normalizeEmployeeId(currentId);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
+        <div className="p-6 border-b border-border/80 flex items-center justify-between bg-muted/30">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                <span>Local Employee Database</span>
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-teal-500/15 text-teal-400 font-bold border border-teal-500/20">
-                  {employees.length} Records
+              <h2 className="text-base font-bold font-mono text-foreground flex items-center gap-2">
+                <span>{t('dir.title', 'Employee SAP Directory')}</span>
+                <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                  {employees.length} {employees.length === 1 ? t('dir.emp_single', 'employee') : t('dir.emp_plural', 'employees')}
                 </span>
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Saved locally on your laptop. Auto-fills your name when entering SAP ID.
+              </h2>
+              <p className="text-xs text-muted-foreground font-mono">
+                {t('dir.subtitle', 'System directory for numeric SAP IDs & employee records')}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title={t('common.close', 'Close')}
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -227,18 +280,18 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div className="text-xs font-mono min-w-0 truncate">
-                  <span className="text-muted-foreground">Active in Ledger: </span>
-                  <span className="font-bold text-foreground">ID #{normalizedCurrentId}</span>
+                  <span className="text-muted-foreground">{t('dir.active_in_ledger', 'Active in Ledger:')} </span>
+                  <span className="font-bold text-foreground">SAP #{normalizedCurrentId}</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleClearSelection}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 transition-all cursor-pointer shadow-xs whitespace-nowrap shrink-0"
-                title="Clear selected employee from ledger"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 transition-all cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                title={t('dir.unselect_btn', 'Clear selected employee from ledger')}
               >
                 <UserX className="w-3.5 h-3.5" />
-                <span>Unselect</span>
+                <span>{t('dir.unselect_btn', 'Unselect')}</span>
               </button>
             </div>
           )}
@@ -251,7 +304,7 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
                 <Plus className="w-3.5 h-3.5" />
-                <span>Save New Employee to Database</span>
+                <span>{t('dir.save_new', 'Save New Employee (Numeric SAP)')}</span>
               </span>
               {successMessage && (
                 <span className="text-[11px] font-mono text-emerald-400 font-bold flex items-center gap-1 animate-in fade-in">
@@ -261,12 +314,14 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-              <div className="sm:col-span-4 relative flex items-center">
+              <div className="sm:col-span-3 relative flex items-center">
                 <input
                   type="text"
-                  placeholder="SAP / ID # (e.g. 10452)"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder={t('export.sap_id', 'SAP ID')}
                   value={newId}
-                  onChange={(e) => setNewId(e.target.value)}
+                  onChange={(e) => setNewId(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full pl-3 pr-7 py-2.5 bg-background border border-border rounded-xl font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-teal-500"
                 />
                 {newId && (
@@ -279,12 +334,13 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
                   </button>
                 )}
               </div>
-              <div className="sm:col-span-5 relative flex items-center">
+              <div className="sm:col-span-4 relative flex items-center">
                 <input
                   type="text"
-                  placeholder="Full Employee Name"
+                  inputMode="text"
+                  placeholder={t('export.name', 'Employee Name')}
                   value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  onChange={(e) => setNewName(e.target.value.replace(/[^a-zA-Z\s\-'.]/g, ''))}
                   className="w-full pl-3 pr-7 py-2.5 bg-background border border-border rounded-xl font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-teal-500"
                 />
                 {newName && (
@@ -298,18 +354,39 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
                 )}
               </div>
               <div className="sm:col-span-3">
+                <select
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                  className="w-full py-2.5 px-2 bg-background border border-border rounded-xl font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-teal-500"
+                >
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
                 <button
                   type="submit"
-                  disabled={!newId.trim() || !newName.trim()}
-                  className="w-full h-full py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white font-mono text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1"
+                  disabled={!newId.trim() || !newName.trim() || liveConflict.hasConflict}
+                  className="w-full h-full py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white font-mono text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer flex items-center justify-center gap-1"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Save &amp; Use</span>
+                  <span>{t('dir.save_btn', 'Save')}</span>
                 </button>
               </div>
             </div>
+
+            {liveConflict.hasConflict && (
+              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-center gap-2 animate-in fade-in duration-200">
+                <span className="font-bold">⚠️ {t('dir.dup_err', 'Duplicate Error')}:</span>
+                <span>{liveConflict.conflictMessage}</span>
+              </div>
+            )}
+
             <p className="text-[11px] text-muted-foreground font-mono">
-              💡 Tip: Entering your ID here saves it on your laptop so typing your SAP number anywhere auto-completes your name!
+              💡 {t('dir.tip', 'Tip: Save records with numeric SAP IDs and clean employee names.')}
             </p>
           </form>
 
@@ -319,167 +396,132 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
               <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search local database by ID or Name..."
+                placeholder={t('dir.search_placeholder', 'Search by SAP # or Name...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-8 py-2 bg-background border border-border rounded-xl font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-teal-500"
+                className="w-full pl-10 pr-8 py-2 bg-muted/40 border border-border rounded-xl text-xs font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-teal-500"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Backup & Restore Tools */}
-              {employees.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleExportBackup}
-                  className="p-2 rounded-xl text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-all cursor-pointer"
-                  title="Export local database backup (JSON)"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportBackup}
+                disabled={employees.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-medium rounded-xl border border-border hover:bg-muted transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
+                title={t('dir.backup_btn', 'Export Database to JSON file')}
+              >
+                <Download className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden sm:inline">{t('dir.backup_btn', 'Backup')}</span>
+              </button>
 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded-xl text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-all cursor-pointer"
-                title="Import employees from JSON backup"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-mono font-medium rounded-xl border border-border hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                title={t('dir.restore_btn', 'Import Database from JSON file')}
               >
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden sm:inline">{t('dir.restore_btn', 'Restore')}</span>
               </button>
               <input
-                type="file"
                 ref={fileInputRef}
-                onChange={handleImportFile}
+                type="file"
                 accept=".json"
+                onChange={handleImportBackup}
                 className="hidden"
               />
-
-              {employees.length > 0 && !isConfirmingClearAll && (
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmingClearAll(true)}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-mono text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer whitespace-nowrap"
-                  title="Remove all records from directory"
-                >
-                  Clear All
-                </button>
-              )}
             </div>
-
-            {isConfirmingClearAll && (
-              <div className="flex items-center gap-1.5 bg-rose-500/15 border border-rose-500/30 px-2.5 py-1.5 rounded-xl animate-in fade-in shrink-0 w-full sm:w-auto justify-between">
-                <span className="text-[11px] font-mono text-rose-500 font-bold">Wipe all {employees.length} records?</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleClearAllDirectory}
-                    className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[10px] font-mono font-bold cursor-pointer"
-                  >
-                    Yes, Wipe
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsConfirmingClearAll(false)}
-                    className="px-2 py-1 bg-muted hover:bg-accent text-foreground rounded-lg text-[10px] font-mono cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Employee Records List */}
-          <div className="space-y-2">
+          {/* Directory Records List */}
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {filteredEmployees.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground font-mono text-xs border border-dashed border-border rounded-2xl p-6 space-y-2">
-                <Database className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                <p className="font-semibold text-foreground">Local Database is Empty</p>
-                <p className="text-[11px]">Add your SAP ID and Name above to save your profile to this laptop.</p>
+              <div className="p-8 text-center border border-dashed border-border rounded-2xl">
+                <Users className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-xs font-mono text-muted-foreground">
+                  {searchQuery ? t('dir.no_match', 'No employees matching your search') : t('dir.empty_dir', 'Directory is currently empty')}
+                </p>
+                <p className="text-[11px] text-muted-foreground/80 mt-1">
+                  {t('dir.add_tip', 'Add employee records above to build your team database.')}
+                </p>
               </div>
             ) : (
               filteredEmployees.map((emp) => {
-                const isSelected = normalizeEmployeeId(emp.id) === normalizedCurrentId;
-                const isConfirmingDelete = deletingId === emp.id;
-
+                const isCurrent = normalizedCurrentId === normalizeEmployeeId(emp.id);
                 return (
                   <div
                     key={emp.id}
-                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'bg-teal-500/10 border-teal-500/50 text-foreground ring-1 ring-teal-500/30'
-                        : 'bg-card border-border hover:border-teal-500/40 hover:bg-accent/40'
+                    onClick={() => handleSelectRecord(emp.id, emp.name)}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer group ${
+                      isCurrent
+                        ? 'border-teal-500 bg-teal-500/15 shadow-sm'
+                        : 'border-border/80 bg-muted/20 hover:border-teal-500/50 hover:bg-muted/40'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
-                          isSelected
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
+                          isCurrent
                             ? 'bg-teal-500 text-black'
-                            : 'bg-muted text-foreground'
+                            : 'bg-muted border border-border text-muted-foreground group-hover:border-teal-500/40 group-hover:text-teal-400'
                         }`}
                       >
-                        <Hash className="w-4 h-4" />
+                        #{emp.id}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-sm text-foreground">
-                            ID #{emp.id}
-                          </span>
-                          {isSelected && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-500/20 text-teal-400 font-bold flex items-center gap-1">
-                              <Check className="w-3 h-3" /> Active
+                        <div className="text-xs font-bold text-foreground truncate flex items-center gap-2">
+                          <span>{emp.name}</span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-500 text-black font-bold">
+                              {t('dir.active_badge', 'ACTIVE')}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground font-medium truncate">{emp.name}</p>
+                        <div className="text-[11px] font-mono text-muted-foreground truncate">
+                          SAP #{emp.id} {emp.teamName ? `• ${emp.teamName}` : ''}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {!isSelected && (
-                        <button
-                          type="button"
-                          onClick={() => handleSelectRecord(emp.id, emp.name)}
-                          className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-mono text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
-                        >
-                          <span>Select</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectRecord(emp.id, emp.name);
+                        }}
+                        className="p-1.5 rounded-lg text-xs font-mono font-medium text-teal-400 hover:bg-teal-500/20 transition-colors flex items-center gap-1"
+                        title={t('dir.use_btn', 'Use this employee in ledger')}
+                      >
+                        <span>{t('dir.use_btn', 'Use')}</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
 
-                      {isConfirmingDelete ? (
-                        <div
-                          className="flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 p-1 rounded-xl animate-in fade-in"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="text-[10px] font-mono text-rose-500 font-bold px-1">Delete #{emp.id}?</span>
+                      {deletingId === emp.id ? (
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={(e) => confirmDelete(emp.id, e)}
-                            className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[10px] font-mono font-bold cursor-pointer"
+                            className="px-2 py-1 rounded-lg bg-rose-600 text-white font-mono text-[10px] font-bold hover:bg-rose-500 transition-colors"
                           >
-                            Yes
+                            {t('dir.confirm_del', 'Confirm')}
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingId(null);
-                            }}
-                            className="px-2 py-1 bg-muted hover:bg-accent text-foreground rounded-lg text-[10px] font-mono cursor-pointer"
+                            onClick={() => setDeletingId(null)}
+                            className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
                           >
-                            Cancel
+                            <X className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
@@ -489,10 +531,10 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
                             e.stopPropagation();
                             setDeletingId(emp.id);
                           }}
-                          className="p-2 rounded-xl text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-60 hover:opacity-100 cursor-pointer"
-                          title={`Delete ID #${emp.id} from local database`}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete employee record"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
@@ -504,25 +546,45 @@ export const EmployeeDirectoryModal: React.FC<EmployeeDirectoryModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
-          {normalizedCurrentId ? (
+        <div className="p-4 border-t border-border/80 bg-muted/30 flex items-center justify-between gap-3">
+          {isConfirmingClearAll ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-rose-400 font-bold">
+                {t('dir.clear_confirm_q', 'Clear all records?')}
+              </span>
+              <button
+                type="button"
+                onClick={handleClearAllDirectory}
+                className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold"
+              >
+                {t('dir.yes_clear', 'Yes, Clear All')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsConfirmingClearAll(false)}
+                className="px-2.5 py-1 rounded-xl bg-muted text-foreground text-xs font-mono"
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={handleClearSelection}
-              className="px-3.5 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={employees.length === 0}
+              onClick={() => setIsConfirmingClearAll(true)}
+              className="text-xs font-mono text-muted-foreground hover:text-rose-400 transition-colors disabled:opacity-30 flex items-center gap-1 cursor-pointer"
             >
-              <UserX className="w-3.5 h-3.5" />
-              <span>Clear Selected Employee</span>
+              <Trash2 className="w-3 h-3" />
+              <span>{t('dir.clear_dir', 'Clear Directory')}</span>
             </button>
-          ) : (
-            <div />
           )}
 
           <button
+            type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl border border-border bg-background hover:bg-accent text-xs font-mono font-medium text-foreground transition-all cursor-pointer"
+            className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-mono text-xs font-semibold rounded-xl border border-border transition-colors cursor-pointer shadow-2xs"
           >
-            Done
+            {t('common.close', 'Close')}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ExportSettings } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ExportSettings, UserProfile } from '../types';
 import {
   FileSpreadsheet,
   User,
@@ -9,7 +9,6 @@ import {
   AlertCircle,
   CheckCircle,
   Users,
-  Sparkles,
   X,
   RotateCcw,
   AlertTriangle,
@@ -20,13 +19,15 @@ import {
   Lock,
   ShieldCheck,
   ShieldAlert,
+  UserCheck,
+  Building
 } from 'lucide-react';
 import {
-  lookupEmployeeById,
   saveEmployeeMapping,
-  getAllEmployees,
   normalizeEmployeeId,
 } from '../utils/employeeDirectory';
+import { getTeamForSapId } from '../utils/teamDatabase';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ExportCardProps {
   exportSettings: ExportSettings;
@@ -39,6 +40,7 @@ interface ExportCardProps {
   unresolvedAbsencesCount?: number;
   onOpenStickyNotes: () => void;
   onOpenDirectory?: () => void;
+  currentUser?: UserProfile;
 }
 
 export const ExportCard: React.FC<ExportCardProps> = ({
@@ -52,99 +54,62 @@ export const ExportCard: React.FC<ExportCardProps> = ({
   unresolvedAbsencesCount = 0,
   onOpenStickyNotes,
   onOpenDirectory,
+  currentUser,
 }) => {
-  const [autoMatchedName, setAutoMatchedName] = useState<string | null>(null);
-  const [directoryList, setDirectoryList] = useState<{ id: string; name: string }[]>([]);
-  const [showIdDropdown, setShowIdDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
-  // Load directory list for quick suggestions
-  const refreshDirectory = () => {
-    setDirectoryList(getAllEmployees());
-  };
-
-  useEffect(() => {
-    refreshDirectory();
-    const handleUpdate = () => {
-      refreshDirectory();
-    };
-    window.addEventListener('employee_directory_updated', handleUpdate);
-    return () => window.removeEventListener('employee_directory_updated', handleUpdate);
-  }, []);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowIdDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Handle SAP / Employee ID Input with Real-time Auto Lookup
+  // Handle SAP / Employee ID Input with Strict Numeric Enforcement
   const handleIdChange = (rawId: string) => {
-    const cleanId = normalizeEmployeeId(rawId);
+    // Strictly enforce numeric digits only
+    const numericId = rawId.replace(/[^0-9]/g, '');
 
-    if (!cleanId) {
+    if (!numericId) {
       onChangeSettings({
         ...exportSettings,
-        employeeId: rawId,
-        name: '',
+        employeeId: '',
       });
-      setAutoMatchedName(null);
       return;
     }
 
-    // Check local database for this ID
-    const matchedName = lookupEmployeeById(cleanId);
-    if (matchedName) {
-      onChangeSettings({
-        ...exportSettings,
-        employeeId: cleanId,
-        name: matchedName,
-      });
-      setAutoMatchedName(matchedName);
-      setTimeout(() => setAutoMatchedName(null), 5000);
-    } else {
-      onChangeSettings({
-        ...exportSettings,
-        employeeId: cleanId,
-      });
-      setAutoMatchedName(null);
-    }
-  };
-
-  // Handle Selection from Suggestion Dropdown
-  const handleSelectSuggestion = (id: string, name: string) => {
+    const team = getTeamForSapId(numericId);
     onChangeSettings({
       ...exportSettings,
-      employeeId: id,
-      name: name,
+      employeeId: numericId,
+      teamId: team?.id || exportSettings.teamId,
+      teamName: team?.name || exportSettings.teamName,
+      teamLeaderSapId: team?.leaderSapId || exportSettings.teamLeaderSapId,
+      teamLeaderName: team?.leaderName || exportSettings.teamLeaderName,
     });
-    setAutoMatchedName(name);
-    setShowIdDropdown(false);
-    setTimeout(() => setAutoMatchedName(null), 5000);
   };
 
-  // Handle Employee Name change & continuous learning to local DB
-  const handleNameChange = (newName: string) => {
-    onChangeSettings({
-      ...exportSettings,
-      name: newName,
-    });
+  // Handle Employee Name change (Strict Letters Only - accepts English and Arabic characters)
+  const handleNameChange = (rawName: string) => {
+    // Strip digits only, preserving letters in all languages
+    const lettersOnlyName = rawName.replace(/[0-9\d]/g, '');
     const cleanId = normalizeEmployeeId(exportSettings.employeeId);
-    if (cleanId && newName.trim()) {
-      saveEmployeeMapping(cleanId, newName.trim());
-    }
+    const team = getTeamForSapId(cleanId);
+
+    onChangeSettings({
+      ...exportSettings,
+      name: lettersOnlyName,
+      teamId: exportSettings.teamId || team?.id,
+      teamName: exportSettings.teamName || team?.name,
+      teamLeaderSapId: exportSettings.teamLeaderSapId || team?.leaderSapId,
+      teamLeaderName: exportSettings.teamLeaderName || team?.leaderName,
+    });
   };
 
   const handleBlurSave = () => {
     const cleanId = normalizeEmployeeId(exportSettings.employeeId);
     const cleanName = exportSettings.name.trim();
+    const team = getTeamForSapId(cleanId);
     if (cleanId && cleanName) {
-      saveEmployeeMapping(cleanId, cleanName);
+      saveEmployeeMapping(cleanId, cleanName, {
+        teamId: exportSettings.teamId || team?.id,
+        teamName: exportSettings.teamName || team?.name,
+        teamLeaderSapId: exportSettings.teamLeaderSapId || team?.leaderSapId,
+        teamLeaderName: exportSettings.teamLeaderName || team?.leaderName,
+      });
     }
   };
 
@@ -152,9 +117,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
     onChangeSettings({
       ...exportSettings,
       employeeId: '',
-      name: '',
     });
-    setAutoMatchedName(null);
   };
 
   const handleClearName = () => {
@@ -170,8 +133,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
 
   const isSapValid = Boolean(
     exportSettings.employeeId?.trim() &&
-    exportSettings.employeeId.trim().toLowerCase() !== 'employee id' &&
-    exportSettings.employeeId.trim().toLowerCase() !== 'sap id'
+    /^[0-9]+$/.test(exportSettings.employeeId.trim())
   );
 
   const isNameValid = Boolean(
@@ -186,20 +148,20 @@ export const ExportCard: React.FC<ExportCardProps> = ({
     !isSapValid ||
     !isNameValid;
 
-  // Filter suggestions based on typed ID
-  const suggestions = directoryList.filter((emp) => {
-    if (!exportSettings.employeeId) return true;
-    const cleanCurrent = normalizeEmployeeId(exportSettings.employeeId).toLowerCase();
-    return (
-      emp.id.toLowerCase().includes(cleanCurrent) ||
-      emp.name.toLowerCase().includes(cleanCurrent)
-    );
-  });
+  const assignedTeam = exportSettings.teamName 
+    ? { name: exportSettings.teamName, leaderName: exportSettings.teamLeaderName, leaderSapId: exportSettings.teamLeaderSapId }
+    : exportSettings.employeeId 
+    ? getTeamForSapId(exportSettings.employeeId)
+    : null;
+
+  const assignedLeaderName = assignedTeam?.leaderName || exportSettings.teamLeaderName || t('role.team_leader');
+  const assignedLeaderSap = assignedTeam?.leaderSapId || exportSettings.teamLeaderSapId || '2001';
+  const assignedTeamName = assignedTeam?.name || exportSettings.teamName || 'Operations Team Alpha';
 
   return (
     <div className="bg-card border-2 border-primary/40 rounded-3xl p-6 sm:p-7 shadow-lg flex flex-col justify-between gap-5">
-      {/* DIRECT ACCESS PORTAL BUTTONS (TEAM LEADER & MANAGER) */}
-      {onNavigateTab && (
+      {/* DIRECT ACCESS PORTAL BUTTONS (ROLE-BASED VISIBILITY) */}
+      {onNavigateTab && (currentUser?.role === 'team_leader' || currentUser?.role === 'manager' || currentUser?.role === 'admin') && (
         <div className="p-4 bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-teal-500/15 border-2 border-amber-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2.5">
             <span className="flex h-3 w-3 relative">
@@ -208,10 +170,10 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             </span>
             <div>
               <span className="text-xs font-mono font-extrabold uppercase tracking-wide text-foreground">
-                PORTAL SELECTOR (CLICK TO VIEW):
+                {t('portal.selector_title')}
               </span>
               <p className="text-[11px] font-mono text-muted-foreground">
-                Jump directly into Team Leader Review or Manager Matrix
+                {currentUser?.role === 'team_leader' ? t('portal.tl_desc') : t('portal.mgr_desc')}
               </p>
             </div>
           </div>
@@ -222,16 +184,18 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-black shadow-md shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ring-2 ring-amber-500/50"
             >
               <CheckSquare className="w-4 h-4 text-black" />
-              <span>👉 OPEN TAB 2: TEAM LEADER VIEW</span>
+              <span>{t('portal.open_tl')}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('manager_overview')}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ring-2 ring-indigo-500/50"
-            >
-              <BarChart3 className="w-4 h-4 text-white" />
-              <span>👉 OPEN TAB 3: MANAGER VIEW</span>
-            </button>
+            {(currentUser?.role === 'manager' || currentUser?.role === 'admin') && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('manager_overview')}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ring-2 ring-indigo-500/50"
+              >
+                <BarChart3 className="w-4 h-4 text-white" />
+                <span>{t('portal.open_mgr')}</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -245,11 +209,8 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             </div>
             <div>
               <h2 className="font-mono text-xs uppercase tracking-widest text-foreground font-bold">
-                Export Overtime Log
+                {t('export.card_title')}
               </h2>
-              <span className="text-[11px] text-muted-foreground">
-                Employee metadata &amp; dispatch parameters
-              </span>
             </div>
           </div>
 
@@ -263,7 +224,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                 title="Manage local employee database"
               >
                 <Database className="w-3.5 h-3.5 text-amber-500" />
-                <span>Local DB ({directoryList.length})</span>
+                <span>{t('export.emp_db')}</span>
               </button>
             )}
 
@@ -275,7 +236,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                 title="Clear entered ID & Name"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Profile</span>
+                <span>{t('export.reset_profile')}</span>
               </button>
             )}
 
@@ -286,54 +247,52 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               title="Import overtime reasons from Sticky Notes"
             >
               <StickyNote className="w-3.5 h-3.5" />
-              <span>Sticky Notes</span>
+              <span>{t('export.sticky_notes')}</span>
             </button>
           </div>
         </div>
 
-        {/* Security & Data Ownership Notice */}
-        <div className="mb-4 p-3 rounded-2xl bg-muted/30 border border-border/80 flex items-center justify-between gap-2.5 text-[11px] font-mono text-muted-foreground">
+        {/* Parameter Blocks Header & Approver Information */}
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>
-              <strong className="text-foreground">Security &amp; Data Lock:</strong> Timesheet punch records belong strictly to this employee profile.
+            <span className="font-mono text-xs uppercase tracking-wider font-bold text-foreground">
+              {t('export.params_title')}
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 shrink-0">
-            <ShieldCheck className="w-3 h-3" />
-            <span>Encrypted Session</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono font-bold">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>{t('export.approver')} {assignedLeaderName} (SAP #{assignedLeaderSap})</span>
           </div>
         </div>
 
         {/* 3 Dedicated Parameter Blocks */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Block 1: Employee ID with Auto-Lookup Dropdown */}
+          {/* Block 1: SAP ID with Strict Numeric Input */}
           <div
-            ref={dropdownRef}
             className="p-4 rounded-2xl border border-border bg-muted/20 flex flex-col justify-between min-w-0 relative"
           >
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
                 <Hash className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>SAP / Employee ID</span>
+                <span>{t('export.sap_label')}</span>
               </label>
-              {exportSettings.employeeId.trim() ? (
+              {isSapValid ? (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
-                    ✓ Set
+                    {t('export.sap_valid')}
                   </span>
                   <button
                     type="button"
                     onClick={handleClearId}
                     className="p-0.5 rounded-md hover:bg-rose-500/20 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
-                    title="Delete / Clear Employee ID"
+                    title="Delete / Clear SAP ID"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               ) : (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
-                  ⚠️ Required
+                  {t('export.sap_numbers_only')}
                 </span>
               )}
             </div>
@@ -342,15 +301,14 @@ export const ExportCard: React.FC<ExportCardProps> = ({
               <div className="relative flex items-center">
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={exportSettings.employeeId}
                   onChange={(e) => handleIdChange(e.target.value)}
-                  onFocus={() => {
-                    if (directoryList.length > 0) setShowIdDropdown(true);
-                  }}
                   onBlur={handleBlurSave}
-                  placeholder="Enter SAP # (e.g. 10452)"
+                  placeholder={t('export.sap_placeholder')}
                   className={`w-full min-w-0 bg-background rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-foreground focus:outline-hidden transition-all ${
-                    exportSettings.employeeId.trim()
+                    isSapValid
                       ? 'border border-border focus:border-amber-500'
                       : 'border border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
                   }`}
@@ -366,47 +324,6 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                   </button>
                 )}
               </div>
-
-              {/* Suggestions Dropdown from Local Laptop Database */}
-              {showIdDropdown && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-card border border-border rounded-2xl shadow-xl max-h-48 overflow-y-auto p-1 space-y-1">
-                  <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-amber-500 font-bold flex items-center justify-between border-b border-border/60">
-                    <span>Database Matches</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowIdDropdown(false)}
-                      className="text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  {suggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectSuggestion(item.id, item.name);
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-muted text-xs font-mono flex items-center justify-between gap-2 cursor-pointer transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <span className="font-bold text-foreground">#{item.id}</span>
-                        <span className="text-muted-foreground text-[11px] ml-2 truncate">{item.name}</span>
-                      </div>
-                      <span className="text-[10px] text-amber-500 font-bold shrink-0">Auto-fill</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Auto-filled Name Notification */}
-              {autoMatchedName && (
-                <span className="text-[11px] text-emerald-400 font-mono font-bold flex items-center gap-1.5 animate-in fade-in bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 truncate">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Auto-loaded: {autoMatchedName}</span>
-                </span>
-              )}
             </div>
           </div>
 
@@ -415,12 +332,12 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
                 <User className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>Full Employee Name</span>
+                <span>{t('export.name_label')}</span>
               </label>
-              {exportSettings.name.trim() ? (
+              {isNameValid ? (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
-                    ✓ Set
+                    {t('export.name_set')}
                   </span>
                   <button
                     type="button"
@@ -433,7 +350,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
                 </div>
               ) : (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30 shrink-0 whitespace-nowrap">
-                  ⚠️ Required
+                  {t('export.name_type')}
                 </span>
               )}
             </div>
@@ -441,12 +358,13 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             <div className="relative flex items-center">
               <input
                 type="text"
+                inputMode="text"
                 value={exportSettings.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onBlur={handleBlurSave}
-                placeholder="Full Employee Name"
+                placeholder={t('export.name_placeholder')}
                 className={`w-full min-w-0 bg-background rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-foreground focus:outline-hidden transition-all ${
-                  exportSettings.name.trim()
+                  isNameValid
                     ? 'border border-border focus:border-amber-500'
                     : 'border border-amber-500/60 focus:border-amber-400 placeholder:text-amber-400/60'
                 }`}
@@ -469,10 +387,10 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <label className="text-[11px] font-mono uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5 truncate">
                 <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>Shift End Time</span>
+                <span>{t('export.shift_end_label')}</span>
               </label>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0 whitespace-nowrap">
-                ✓ Set
+                {t('export.name_set')}
               </span>
             </div>
 
@@ -490,7 +408,7 @@ export const ExportCard: React.FC<ExportCardProps> = ({
         {/* Verification Status Banner */}
         <div
           className={`mt-4 p-3.5 rounded-2xl border transition-all text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-            !exportSettings.employeeId.trim() || !exportSettings.name.trim()
+            !isSapValid || !isNameValid
               ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
               : unresolvedAbsencesCount > 0
               ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
@@ -502,55 +420,55 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           }`}
         >
           <div className="flex items-center gap-2.5 flex-wrap">
-            {!exportSettings.employeeId.trim() ? (
+            {!isSapValid ? (
               <>
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span className="font-bold">
-                  SAP / Employee ID is required to export or submit.
+                  {t('export.err_sap')}
                 </span>
               </>
-            ) : !exportSettings.name.trim() ? (
+            ) : !isNameValid ? (
               <>
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span className="font-bold">
-                  Full Employee Name is required to export or submit.
+                  {t('export.err_name')}
                 </span>
               </>
             ) : unresolvedAbsencesCount > 0 ? (
               <>
                 <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span className="font-semibold">
-                  Checkpoint Required: {unresolvedAbsencesCount} absence {unresolvedAbsencesCount === 1 ? 'day needs' : 'days need'} verification before Excel export.
+                  {t('export.err_absent').replace('{count}', String(unresolvedAbsencesCount))}
                 </span>
               </>
             ) : missingReasonsCount > 0 ? (
               <>
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                 <span className="font-semibold">
-                  Overtime Reason Required: {missingReasonsCount} {missingReasonsCount === 1 ? 'day is' : 'days are'} missing justification.
+                  {t('export.err_reasons').replace('{count}', String(missingReasonsCount))}
                 </span>
               </>
             ) : overtimeCount > 0 ? (
               <>
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="font-semibold">
-                  SAP #{exportSettings.employeeId}, {exportSettings.name} &amp; {overtimeCount} overtime reasons verified.
+                  {t('export.all_verified').replace('{sap}', exportSettings.employeeId).replace('{name}', exportSettings.name).replace('{count}', String(overtimeCount))} {assignedTeam ? `(${assignedTeam.name})` : ''}
                 </span>
               </>
             ) : (
               <span>
-                No overtime days detected in the current ledger.
+                {t('export.no_ot')}
               </span>
             )}
           </div>
 
-          {missingReasonsCount > 0 && exportSettings.employeeId.trim() && exportSettings.name.trim() && (
+          {missingReasonsCount > 0 && isSapValid && isNameValid && (
             <button
               type="button"
               onClick={onOpenStickyNotes}
               className="px-3 py-1.5 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 shrink-0 shadow-2xs cursor-pointer whitespace-nowrap"
             >
-              Fill with Sticky Notes
+              {t('export.fill_sticky')}
             </button>
           )}
         </div>
@@ -578,12 +496,12 @@ export const ExportCard: React.FC<ExportCardProps> = ({
             )}
             <span className="truncate">
               {!isSapValid
-                ? 'SAP ID Required to Submit'
+                ? t('export.lock_sap')
                 : !isNameValid
-                ? 'Name Required to Submit'
+                ? t('export.lock_name')
                 : hasMissingItems
-                ? `Complete Missing Items (${missingReasonsCount + unresolvedAbsencesCount})`
-                : `Submit to Team Leader (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
+                ? `${t('export.complete_missing')} (${missingReasonsCount + unresolvedAbsencesCount})`
+                : `${t('export.submit_btn')} ${assignedLeaderName} (${overtimeCount} ${t('rules.hrs')})`}
             </span>
           </button>
         )}
@@ -593,19 +511,19 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           disabled={!isSapValid || !isNameValid || hasMissingItems || overtimeCount === 0}
           onClick={() => {
             if (!isSapValid) {
-              alert('SAP / Employee ID is required. Please enter your SAP ID first.');
+              alert(t('val.invalid_sap_numeric'));
               return;
             }
             if (!isNameValid) {
-              alert('Full Employee Name is required. Please enter your name first.');
+              alert(t('val.cannot_export_name'));
               return;
             }
             if (hasMissingItems) {
-              alert('All overtime reasons and absence checkpoints must be completed before exporting.');
+              alert(t('val.missing_reasons_export'));
               return;
             }
             if (overtimeCount === 0) {
-              alert('No overtime records found in the current punch ledger.');
+              alert(t('val.no_ot_export'));
               return;
             }
             onExport();
@@ -627,14 +545,14 @@ export const ExportCard: React.FC<ExportCardProps> = ({
           )}
           <span className="truncate">
             {!isSapValid
-              ? 'SAP ID Required for Excel'
+              ? t('export.lock_sap')
               : !isNameValid
-              ? 'Name Required for Excel'
+              ? t('export.lock_name_excel')
               : missingReasonsCount > 0
-              ? `Fill ${missingReasonsCount} Reason(s) for Excel`
+              ? `${t('export.complete_missing')} (${missingReasonsCount})`
               : unresolvedAbsencesCount > 0
-              ? 'Resolve Absence Checkpoint'
-              : `Export Excel Ledger (${overtimeCount} ${overtimeCount === 1 ? 'day' : 'days'})`}
+              ? t('val.missing_absent_export')
+              : `${t('export.export_btn')} (${overtimeCount})`}
           </span>
         </button>
       </div>

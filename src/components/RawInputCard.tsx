@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Play, RefreshCw, Clipboard, Trash2, Sparkles } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface RawInputCardProps {
   rawInput: string;
@@ -102,6 +103,7 @@ const SAMPLE_TIMESHEET_DATA = `2026.07.16
 00:00:00`;
 
 export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeInput, onRun }) => {
+  const { t } = useLanguage();
   const [isRunning, setIsRunning] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
 
@@ -141,7 +143,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-amber-500" />
           <h2 className="font-mono text-xs uppercase tracking-widest text-foreground font-bold">
-            Raw Attendance Punch Ledger
+            {t('raw.title')}
           </h2>
         </div>
 
@@ -154,7 +156,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
             title="Load sample monthly timesheet with Tuesday overtime and Sunday weekend"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Load Sample 1-Month Punches</span>
+            <span>{t('raw.load_sample')}</span>
           </button>
 
           <button
@@ -164,7 +166,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
             title="Paste attendance punch logs directly from your clipboard"
           >
             <Clipboard className="w-3.5 h-3.5 text-amber-500" />
-            <span>{copiedToast ? 'Pasted!' : 'Paste from Clipboard'}</span>
+            <span>{copiedToast ? t('raw.pasted') : t('raw.paste')}</span>
           </button>
 
           {rawInput.trim() && (
@@ -175,7 +177,7 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
               title="Clear current punch text"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear</span>
+              <span>{t('raw.clear')}</span>
             </button>
           )}
         </div>
@@ -184,14 +186,9 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
       <textarea
         value={rawInput}
         onChange={(e) => onChangeInput(e.target.value)}
-        placeholder="Paste your attendance punch logs here (Date, Check-in, Check-out)..."
+        placeholder={t('raw.placeholder')}
         className="w-full min-h-[160px] bg-background border border-border focus:border-amber-500 rounded-2xl p-4 font-mono text-xs text-foreground leading-relaxed focus:outline-hidden resize-y transition-colors"
       />
-
-      <div className="font-mono text-[11px] text-muted-foreground mt-3 flex items-center justify-between flex-wrap gap-2">
-        <span>Paste rows of three lines each: date (YYYY.MM.DD), check-in time, check-out time.</span>
-        <span className="text-amber-500 font-semibold">00:00:00 / 00:00:00 indicates absent / rest day</span>
-      </div>
 
       {/* Prominent 'Read the Ledger' Button under Raw Punch Data */}
       <div className="mt-5 pt-4 border-t border-border/80">
@@ -202,12 +199,12 @@ export const RawInputCard: React.FC<RawInputCardProps> = ({ rawInput, onChangeIn
           {isRunning ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin text-black" />
-              <span>Processing Ledger Data...</span>
+              <span>{t('raw.processing')}</span>
             </>
           ) : (
             <>
               <Play className="w-4 h-4 fill-black text-black" />
-              <span>Read the ledger</span>
+              <span>{t('raw.read_ledger')}</span>
             </>
           )}
         </button>

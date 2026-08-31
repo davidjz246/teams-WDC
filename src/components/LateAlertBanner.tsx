@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle2, Copy, FileText, Clock } from 'lucide-react';
 import { DayClassification, PermissionStatus } from '../types';
 import { fmtHours, to12Hour, weekdayFullOf } from '../utils/parser';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface LateAlertBannerProps {
   lateDays: DayClassification[];
@@ -20,6 +21,7 @@ export const LateAlertBanner: React.FC<LateAlertBannerProps> = ({
   employeeName,
   employeeId,
 }) => {
+  const { t } = useLanguage();
   const [copiedDate, setCopiedDate] = useState<string | null>(null);
 
   if (lateDays.length === 0) {
@@ -56,15 +58,14 @@ Reason: Requesting late arrival permission for ${day.row.date} due to traffic / 
         <div className="flex-1">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-bold text-base text-rose-700 dark:text-rose-400 flex items-center gap-2">
-              <span>Late Arrival Warning Alert</span>
+              <span>{t('late.title')}</span>
               <span className="px-2.5 py-0.5 rounded-full text-xs bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 font-mono font-bold">
-                {lateDays.length} {lateDays.length === 1 ? 'Day' : 'Days'}
+                {lateDays.length} {t('hero.late_days')}
               </span>
             </h3>
           </div>
           <p className="text-xs text-rose-800 dark:text-rose-200/80 mt-1">
-            You arrived after the <span className="font-mono font-bold text-rose-950 dark:text-white">{to12Hour(lateThresholdVal + ':00')}</span> threshold.
-            Submit a permission request for each day to avoid unexcused late status.
+            {t('late.desc').replace('{threshold}', to12Hour(lateThresholdVal + ':00'))}
           </p>
         </div>
       </div>
@@ -92,17 +93,17 @@ Reason: Requesting late arrival permission for ${day.row.date} due to traffic / 
                     <span className="font-mono text-sm font-bold text-foreground">{day.row.date}</span>
                     <span className="text-xs text-muted-foreground">({weekdayFullOf(day.row.date)})</span>
                     <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 font-semibold border border-rose-200 dark:border-rose-500/30">
-                      In at {to12Hour(day.row.start)} ({fmtHours(day.lateMin)} late)
+                      {t('late.in_at').replace('{time}', to12Hour(day.row.start)).replace('{mins}', fmtHours(day.lateMin))}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {isFiled ? (
                       <span className="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 inline" /> Permission status marked as filed.
+                        <CheckCircle2 className="w-3.5 h-3.5 inline" /> {t('late.status_filed')}
                       </span>
                     ) : (
                       <span className="text-rose-700 dark:text-rose-400 font-medium">
-                        ⚠️ Reminder: Make a permission for this day! Clocked in {fmtHours(day.lateMin)} after {to12Hour(lateThresholdVal + ':00')}.
+                        {t('late.reminder')} ({fmtHours(day.lateMin)})
                       </span>
                     )}
                   </p>
@@ -116,7 +117,7 @@ Reason: Requesting late arrival permission for ${day.row.date} due to traffic / 
                   title="Copy ready-to-send permission request template"
                 >
                   <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span>{isCopied ? 'Copied Template!' : 'Copy Template'}</span>
+                  <span>{isCopied ? t('late.copied') : t('late.copy_template')}</span>
                 </button>
 
                 <button
@@ -130,12 +131,12 @@ Reason: Requesting late arrival permission for ${day.row.date} due to traffic / 
                   {isFiled ? (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Filed</span>
+                      <span>{t('late.filed')}</span>
                     </>
                   ) : (
                     <>
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Mark Permission Filed</span>
+                      <span>{t('late.mark_filed')}</span>
                     </>
                   )}
                 </button>

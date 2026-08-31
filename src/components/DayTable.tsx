@@ -1,9 +1,11 @@
 import React from 'react';
-import { DayCategory, DayClassification, PermissionStatus, RuleSettings } from '../types';
-import { fmtHours, to12Hour, toMinutes, weekdayOf } from '../utils/parser';
+import { DayCategory, DayClassification, PermissionStatus, RuleSettings, OvertimeSubmission } from '../types';
+import { fmtHours, to12Hour, toMinutes, toHM, weekdayOf } from '../utils/parser';
+import { useLanguage } from '../i18n/LanguageContext';
 import {
   AlertCircle,
   CheckCircle2,
+  XCircle,
   FileText,
   Clock,
   Calendar,
@@ -27,6 +29,7 @@ interface DayTableProps {
   weekendDays?: number[];
   absenceCheckpoints?: Record<string, boolean>;
   onToggleAbsenceCheckpoint?: (date: string) => void;
+  activeSubmission?: OvertimeSubmission;
 }
 
 export const DayTable: React.FC<DayTableProps> = ({
@@ -41,7 +44,9 @@ export const DayTable: React.FC<DayTableProps> = ({
   weekendDays = [5, 6],
   absenceCheckpoints = {},
   onToggleAbsenceCheckpoint,
+  activeSubmission,
 }) => {
+  const { t, language } = useLanguage();
   const dayMinutes = 24 * 60;
 
   return (
@@ -50,38 +55,51 @@ export const DayTable: React.FC<DayTableProps> = ({
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-amber-500" />
           <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
-            Day-by-Day Ledger Table &amp; Reason Manager
+            {t('table.title', 'Day-by-Day Ledger Table & Reason Manager')}
           </h2>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[880px]">
+        {classifiedList.length === 0 ? (
+          <div className="py-12 px-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-3 border border-border">
+              <Calendar className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground font-mono">
+              {t('table.no_data', 'No Attendance Data Loaded')}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              {t('table.no_data_desc', 'Paste attendance punch logs into the input area above and click "Read the ledger" to calculate worked hours, overtime, and attendance status.')}
+            </p>
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse min-w-[880px]">
           <thead>
             <tr className="border-b border-border/80">
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold">
-                Date
+                {t('table.col_date', 'Date')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold">
-                Day
+                {t('table.col_day', 'Day')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold">
-                In / Out
+                {t('table.col_in_out', 'In / Out')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 w-[130px] font-bold">
-                Day shape
+                {t('table.col_shape', 'Day shape')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold">
-                Worked
+                {t('table.col_worked', 'Worked')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold">
-                Status &amp; Alerts
+                {t('table.col_status', 'Status & Alerts')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 font-bold w-[260px]">
-                Reason / Excuse Checkpoint
+                {t('table.col_reason', 'Reason / Excuse Checkpoint')}
               </th>
               <th className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground pb-3 px-3 text-right font-bold">
-                Category
+                {t('table.col_category', 'Category')}
               </th>
             </tr>
           </thead>
@@ -169,13 +187,13 @@ export const DayTable: React.FC<DayTableProps> = ({
                   : isWFH && c.workedMin === 0
                   ? '8h WFH'
                   : isExcused && c.workedMin === 0
-                  ? 'Excused'
+                  ? t('cat.excused', 'Excused')
                   : isLeave
-                  ? 'Leave'
+                  ? t('cat.leave', 'Leave')
                   : isHoliday
-                  ? 'Holiday'
+                  ? t('cat.holiday', 'Holiday')
                   : isWeekendCat
-                  ? 'Weekend'
+                  ? t('cat.weekend', 'Weekend')
                   : isAbsentCat
                   ? '—'
                   : c.workedMin > 0
@@ -250,55 +268,92 @@ export const DayTable: React.FC<DayTableProps> = ({
                         {isWFH ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-cyan-100 dark:bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400"></span>
-                            Work From Home
+                            {t('cat.wfh', 'Work From Home')}
                           </span>
                         ) : isExcused ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-teal-100 dark:bg-teal-500/15 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-500/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-teal-500 dark:bg-teal-400"></span>
-                            Day with Excuse
+                            {t('cat.excused', 'Day with Excuse')}
                           </span>
                         ) : isOvertime ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            {c.overtimeMin > 0 ? `${fmtHours(c.overtimeMin)} overtime` : 'Overtime Day'}
-                          </span>
+                          <>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              {c.overtimeMin > 0 ? `${fmtHours(c.overtimeMin)} ${t('table.ot_badge', 'overtime')}` : t('cat.overtime_manual', 'Overtime Day')}
+                            </span>
+                            {(() => {
+                              const subItem = activeSubmission?.items?.find((i) => i.date === r.date);
+                              if (!subItem) return null;
+                              if (subItem.status === 'approved') {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                    title={`Team Leader Note: ${subItem.adjustedReason || subItem.leaderNotes || 'Verified & Authorized'}`}
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    <span>{t('sub.approved_by', 'TL Approved')} ({toHM(subItem.overtimeMinutes)})</span>
+                                  </span>
+                                );
+                              }
+                              if (subItem.status === 'rejected') {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                    title={`Team Leader Reason: ${subItem.adjustedReason || subItem.leaderNotes || 'Declined by Team Leader'}`}
+                                  >
+                                    <XCircle className="w-3 h-3 text-rose-400" />
+                                    <span>{t('tl.status_rejected', 'TL Denied')}</span>
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                  title="Submitted to Team Leader — Pending Review"
+                                >
+                                  <Clock className="w-3 h-3 text-amber-400" />
+                                  <span>{t('tl.pending', 'TL Review Pending')}</span>
+                                </span>
+                              );
+                            })()}
+                          </>
                         ) : isLeave ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400"></span>
-                            Leave Permission
+                            {t('cat.leave', 'Leave Permission')}
                           </span>
                         ) : isHoliday ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-teal-100 dark:bg-teal-500/15 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-500/30">
                             <span className="w-1.5 h-1.5 rounded-full bg-teal-500 dark:bg-teal-400"></span>
-                            Holiday
+                            {t('cat.holiday', 'Holiday')}
                           </span>
                         ) : isWeekendCat ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-zinc-200/70 dark:bg-zinc-800/60 text-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700/50">
                             <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 dark:bg-zinc-400"></span>
-                            Weekend
+                            {t('cat.weekend', 'Weekend')}
                           </span>
                         ) : isAbsentCat ? (
                           isAbsenceCheckpointChecked ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                               <Check className="w-3 h-3 text-emerald-500" />
-                              Absence Checkpoint Verified
+                              {t('hero.verified_100', 'Absence Checkpoint Verified')}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30 animate-pulse">
                               <AlertTriangle className="w-3 h-3 text-rose-500" />
-                              Unexcused Absence (Checkpoint Needed)
+                              {t('cat.absent', 'Unexcused Absence (Checkpoint Needed)')}
                             </span>
                           )
                         ) : isPresentCat ? (
                           c.status === 'missing' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-zinc-200/70 dark:bg-zinc-800/60 text-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700/50">
                               <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 dark:bg-zinc-400"></span>
-                              Missing Checkout
+                              {t('summary.unexcused', 'Missing Checkout')}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              On time
+                              {t('hero.on_time', 'On time')}
                             </span>
                           )
                         ) : (
@@ -311,7 +366,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                         {showLateAlert && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30">
                             <AlertCircle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
-                            Late ({fmtHours(c.lateMin)})
+                            {t('table.late_badge', 'Late')} ({fmtHours(c.lateMin)})
                           </span>
                         )}
                       </div>
@@ -320,7 +375,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                       {showLateAlert && (
                         <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-xs flex items-center justify-between gap-2">
                           <span className="text-rose-700 dark:text-rose-400 font-semibold text-[11px]">
-                            In at {to12Hour(r.start)}
+                            {t('late.in_at', 'In at {time}').replace('{time}', to12Hour(r.start)).replace('{mins}', String(c.lateMin))}
                           </span>
                           <button
                             onClick={() => onTogglePermission(r.date)}
@@ -330,7 +385,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                                 : 'bg-rose-600 text-white hover:bg-rose-700'
                             }`}
                           >
-                            {isPermissionFiled ? 'Permission Filed' : 'File Permission'}
+                            {isPermissionFiled ? t('late.filed', 'Permission Filed') : t('late.mark_filed', 'File Permission')}
                           </button>
                         </div>
                       )}
@@ -345,7 +400,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                           type="text"
                           value={reasonValue}
                           onChange={(e) => onUpdateReason(r.date, e.target.value)}
-                          placeholder="Mandatory Overtime reason..."
+                          placeholder={t('table.reason_placeholder', 'Mandatory Overtime reason...')}
                           className={`w-full bg-background rounded-xl px-3 py-1.5 text-xs font-mono text-foreground focus:outline-hidden transition-all ${
                             isMissingReason
                               ? 'border-2 border-rose-500 placeholder:text-rose-500/70 shadow-xs'
@@ -354,7 +409,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                         />
                         {isMissingReason && (
                           <span className="text-[10px] text-rose-600 dark:text-rose-400 font-mono font-semibold block mt-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 text-rose-500" /> Reason required for Excel export
+                            <AlertTriangle className="w-3 h-3 text-rose-500" /> {t('export.err_reasons', 'Reason required for Excel export')}
                           </span>
                         )}
                       </div>
@@ -378,8 +433,8 @@ export const DayTable: React.FC<DayTableProps> = ({
                             )}
                             <span>
                               {isAbsenceCheckpointChecked
-                                ? '✓ Leave Permission Checked'
-                                : 'Check Point (Leave Permission)'}
+                                ? '✓ ' + t('cat.leave', 'Leave Permission Checked')
+                                : t('cat.leave', 'Check Point (Leave Permission)')}
                             </span>
                           </button>
 
@@ -390,7 +445,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                               className="px-2 py-0.5 rounded-lg font-mono text-[10px] bg-muted hover:bg-teal-500/20 text-muted-foreground hover:text-teal-400 border border-border transition-colors cursor-pointer"
                               title="Set category to Day with Excuse"
                             >
-                              Mark Excused
+                              {t('table.mark_excused', 'Mark Excused')}
                             </button>
                           )}
                         </div>
@@ -399,7 +454,7 @@ export const DayTable: React.FC<DayTableProps> = ({
                           type="text"
                           value={reasonValue}
                           onChange={(e) => onUpdateReason(r.date, e.target.value)}
-                          placeholder="Optional absence excuse (e.g. Approved leave, Doctor)..."
+                          placeholder={t('table.excuse_placeholder', 'Optional absence excuse (e.g. Approved leave, Doctor)...')}
                           className="w-full bg-background border border-border hover:border-indigo-500/40 focus:border-indigo-500 rounded-xl px-2.5 py-1 text-[11px] font-mono text-foreground focus:outline-hidden"
                         />
                       </div>
@@ -433,14 +488,14 @@ export const DayTable: React.FC<DayTableProps> = ({
                           : 'bg-card text-foreground border-border'
                       }`}
                     >
-                      <option value="present" className="bg-card text-foreground">Normal / On time</option>
-                      <option value="wfh" className="bg-card text-foreground">Work From Home (WFH)</option>
-                      <option value="excused" className="bg-card text-foreground">Day with Excuse</option>
-                      <option value="overtime_manual" className="bg-card text-foreground">Overtime Day</option>
-                      <option value="absent" className="bg-card text-foreground">Unexcused Absence</option>
-                      <option value="leave" className="bg-card text-foreground">Leave permission</option>
-                      <option value="holiday" className="bg-card text-foreground">Official Holiday</option>
-                      <option value="weekend" className="bg-card text-foreground">Weekend / Rest day</option>
+                      <option value="present" className="bg-card text-foreground">{t('cat.present', 'Normal / On time')}</option>
+                      <option value="wfh" className="bg-card text-foreground">{t('cat.wfh', 'Work From Home (WFH)')}</option>
+                      <option value="excused" className="bg-card text-foreground">{t('cat.excused', 'Day with Excuse')}</option>
+                      <option value="overtime_manual" className="bg-card text-foreground">{t('cat.overtime_manual', 'Overtime Day')}</option>
+                      <option value="absent" className="bg-card text-foreground">{t('cat.absent', 'Unexcused Absence')}</option>
+                      <option value="leave" className="bg-card text-foreground">{t('cat.leave', 'Leave permission')}</option>
+                      <option value="holiday" className="bg-card text-foreground">{t('cat.holiday', 'Official Holiday')}</option>
+                      <option value="weekend" className="bg-card text-foreground">{t('cat.weekend', 'Weekend / Rest day')}</option>
                     </select>
                   </td>
                 </tr>
@@ -448,6 +503,7 @@ export const DayTable: React.FC<DayTableProps> = ({
             })}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React from 'react';
 import { RuleSettings } from '../types';
 import { Clock, ShieldAlert, Award, Sliders, CalendarDays, Timer } from 'lucide-react';
 import { DAY_NAMES, formatWeekendNames } from '../utils/parser';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface RulesCardProps {
   rules: RuleSettings;
@@ -9,6 +10,8 @@ interface RulesCardProps {
 }
 
 export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) => {
+  const { t } = useLanguage();
+
   const updateRule = <K extends keyof RuleSettings>(key: K, value: RuleSettings[K]) => {
     onChangeRules({
       ...rules,
@@ -34,12 +37,9 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
           <div className="flex items-center gap-2">
             <Sliders className="w-4 h-4 text-amber-500" />
             <h2 className="font-mono text-xs uppercase tracking-widest text-foreground font-bold">
-              Attendance &amp; Overtime Rules Engine
+              {t('rules.title')}
             </h2>
           </div>
-          <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
-            Sunday Weekend &amp; Tuesday 4:00 PM
-          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -52,7 +52,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-bold font-mono text-foreground flex items-center gap-1.5 cursor-pointer">
                 <Clock className="w-3.5 h-3.5 text-amber-500" />
-                <span>Shift End (Standard)</span>
+                <span>{t('rules.shift_end_std')}</span>
               </label>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -65,7 +65,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
               </label>
             </div>
             <div className="font-mono text-xs text-muted-foreground flex items-center justify-between gap-2">
-              <span>Cutoff time:</span>
+              <span>{t('rules.cutoff_time')}</span>
               <input
                 type="time"
                 value={rules.timeVal}
@@ -85,7 +85,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-bold font-mono text-amber-400 flex items-center gap-1.5 cursor-pointer">
                 <Timer className="w-3.5 h-3.5 text-amber-500" />
-                <span>Tuesday 4 PM Cutoff</span>
+                <span>{t('rules.tue_early_title')}</span>
               </label>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -98,7 +98,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
               </label>
             </div>
             <div className="font-mono text-xs text-muted-foreground flex items-center justify-between gap-2">
-              <span>Tue checkout:</span>
+              <span>{t('rules.tue_checkout')}</span>
               <input
                 type="time"
                 value={rules.tuesdayShiftEnd || '16:00'}
@@ -118,7 +118,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-bold font-mono text-foreground flex items-center gap-1.5 cursor-pointer">
                 <Award className="w-3.5 h-3.5 text-amber-500" />
-                <span>Worked Hours</span>
+                <span>{t('rules.worked_hours')}</span>
               </label>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -131,7 +131,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
               </label>
             </div>
             <div className="font-mono text-xs text-muted-foreground flex items-center justify-between gap-2">
-              <span>Overtime &gt;</span>
+              <span>{t('rules.ot_greater_than')}</span>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -142,7 +142,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
                   onChange={(e) => updateRule('hoursVal', parseFloat(e.target.value) || 0)}
                   className="w-14 bg-background border border-border rounded-xl px-2 py-1 font-mono text-xs text-foreground focus:outline-hidden focus:border-amber-500 disabled:opacity-50 font-bold text-center"
                 />
-                <span>hrs</span>
+                <span>{t('rules.hrs')}</span>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-bold font-mono text-rose-400 flex items-center gap-1.5 cursor-pointer">
                 <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                <span>Late Arrival</span>
+                <span>{t('rules.late_arrival')}</span>
               </label>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -169,7 +169,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
               </label>
             </div>
             <div className="font-mono text-xs text-muted-foreground flex items-center justify-between gap-2">
-              <span>Late after:</span>
+              <span>{t('rules.late_after')}</span>
               <input
                 type="time"
                 value={rules.lateVal}
@@ -185,7 +185,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
         <div className="mt-4 pt-4 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="text-xs font-mono font-bold text-foreground">Official Weekend Days:</span>
+            <span className="text-xs font-mono font-bold text-foreground">{t('rules.weekend_title')}</span>
             <span className="text-xs font-mono text-muted-foreground">
               ({formatWeekendNames(rules.weekendDays || [0, 5, 6])})
             </span>
@@ -211,14 +211,7 @@ export const RulesCard: React.FC<RulesCardProps> = ({ rules, onChangeRules }) =>
             })}
           </div>
         </div>
-
-        <p className="font-mono text-[11px] text-muted-foreground mt-3 leading-relaxed">
-          • <strong className="text-foreground">Tuesday Rule:</strong> Standard shift ends at <strong>4:00 PM (16:00)</strong>. Overtime calculates after 16:00 with grace period.
-          <br />
-          • <strong className="text-foreground">Sunday Weekend:</strong> Sunday is recognized as a weekend day along with Friday and Saturday.
-        </p>
       </div>
     </div>
   );
 };
-

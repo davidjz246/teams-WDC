@@ -27,7 +27,10 @@ import {
   getActiveUser, 
   getSubmissions, 
   saveSubmission, 
-  setActiveUser 
+  setActiveUser,
+  getTeamForSapId,
+  getTeamById,
+  getTeams
 } from './utils/teamDatabase';
 import { Masthead } from './components/Masthead';
 import { RawInputCard } from './components/RawInputCard';
@@ -43,12 +46,17 @@ import { TeamLeaderApprovals } from './components/TeamLeaderApprovals';
 import { ManagerOverview } from './components/ManagerOverview';
 import { XamppDatabaseModal } from './components/XamppDatabaseModal';
 import { EmployeeSubmissionStatus } from './components/EmployeeSubmissionStatus';
+import { OvertimeLedgerChart } from './components/OvertimeLedgerChart';
+import { DuplicateSubmissionModal } from './components/DuplicateSubmissionModal';
 import { FloatingPortalDock } from './components/FloatingPortalDock';
-import { Check, CheckCircle2 } from 'lucide-react';
+import { Check, CheckCircle2, LayoutDashboard, CalendarDays, Keyboard, FileEdit } from 'lucide-react';
+import { useLanguage } from './i18n/LanguageContext';
 
 export default function App() {
+  const { t } = useLanguage();
   // Theme mode: dark or light
   const [theme, setTheme] = useState<ThemeMode>(() => {
+
     const saved = localStorage.getItem('ledger_theme');
     return saved === 'light' ? 'light' : 'dark';
   });
@@ -69,8 +77,23 @@ export default function App() {
   // Active User Profile & Role Permissions
   const [currentUser, setCurrentUserState] = useState<UserProfile>(() => getActiveUser());
   const [activeTab, setActiveTab] = useState<ActiveAppTab>('employee_ledger');
+  const [ledgerSubTab, setLedgerSubTab] = useState<'dashboard' | 'timesheet' | 'data_entry'>('data_entry');
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Role Access Guard: Ensure employees cannot view Leader/Manager tabs or Database/Manage modal, and Team Leaders cannot view Manager tab
+  useEffect(() => {
+    if (currentUser.role === 'employee') {
+      if (activeTab === 'team_leader_approvals' || activeTab === 'manager_overview') {
+        setActiveTab('employee_ledger');
+      }
+      if (isDatabaseModalOpen) {
+        setIsDatabaseModalOpen(false);
+      }
+    } else if (currentUser.role === 'team_leader' && activeTab === 'manager_overview') {
+      setActiveTab('team_leader_approvals');
+    }
+  }, [currentUser.role, activeTab, isDatabaseModalOpen]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -169,7 +192,6 @@ export default function App() {
   };
 
   const [exportSettings, setExportSettings] = useState<ExportSettings>(() => {
-    const active = getActiveUser();
     const params = new URLSearchParams(window.location.search);
     const nameParam = params.get('name');
     const idParam = params.get('id') || params.get('sap');
@@ -177,8 +199,8 @@ export default function App() {
       const saved = localStorage.getItem('ledger_export_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const savedId = idParam || normalizeEmployeeId(parsed.employeeId || active.sapId || '');
-        let savedName = nameParam ? decodeURIComponent(nameParam) : (parsed.name || active.name || '').trim();
+        const savedId = idParam || normalizeEmployeeId(parsed.employeeId || '');
+        let savedName = nameParam ? decodeURIComponent(nameParam) : (parsed.name || '').trim();
 
         if (savedId && !savedName) {
           const lookedUp = lookupEmployeeById(savedId);
@@ -195,8 +217,8 @@ export default function App() {
       console.error(e);
     }
 
-    const initialId = idParam ? normalizeEmployeeId(idParam) : active.sapId || '';
-    const initialName = nameParam ? decodeURIComponent(nameParam) : (initialId ? lookupEmployeeById(initialId) || active.name : active.name);
+    const initialId = idParam ? normalizeEmployeeId(idParam) : '';
+    const initialName = nameParam ? decodeURIComponent(nameParam) : (initialId ? lookupEmployeeById(initialId) || '' : '');
 
     return {
       name: initialName,
@@ -317,82 +339,10 @@ export default function App() {
     localStorage.setItem('ledger_day_reasons', JSON.stringify(dayReasons));
   }, [dayReasons]);
 
-  // Seed sample submissions if storage is completely empty so TL and Manager views look alive
-  useEffect(() => {
-    const existing = getSubmissions();
-    if (existing.length === 0) {
-      const sample1: OvertimeSubmission = {
-        id: 'sub_32272_jul2026',
-        employeeId: '32272',
-        employeeName: 'David Joseph Zakria',
-        department: 'IT & Digital Systems',
-        periodLabel: '16 Jul 2026 – 15 Aug 2026',
-        totalOvertimeMinutes: 285,
-        status: 'pending',
-        submittedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-        items: [
-          {
-            date: '2026.07.21',
-            dayOfWeek: 'Tue',
-            startTime: '09:00:00',
-            endTime: '19:15:00',
-            shiftEndStandard: '16:00',
-            overtimeMinutes: 195,
-            reason: 'Production Database migration & Network Switch firmware deployment',
-            category: 'overtime_manual',
-            status: 'pending',
-          },
-          {
-            date: '2026.07.28',
-            dayOfWeek: 'Tue',
-            startTime: '09:02:00',
-            endTime: '17:30:00',
-            shiftEndStandard: '16:00',
-            overtimeMinutes: 90,
-            reason: 'Quarterly SAP User security audit & ticket resolution backlog',
-            category: 'overtime_manual',
-            status: 'pending',
-          },
-        ],
-      };
-
-      const sample2: OvertimeSubmission = {
-        id: 'sub_18492_jul2026',
-        employeeId: '18492',
-        employeeName: 'Omar Farouk Mostafa',
-        department: 'Operations & Facilities',
-        periodLabel: '16 Jul 2026 – 15 Aug 2026',
-        totalOvertimeMinutes: 150,
-        status: 'approved',
-        submittedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-        reviewedBy: 'Mohamed El-Sayed (Team Leader)',
-        reviewedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-        leaderComments: 'Verified and approved with Operations schedule.',
-        items: [
-          {
-            date: '2026.07.19',
-            dayOfWeek: 'Sun',
-            startTime: '10:00:00',
-            endTime: '14:30:00',
-            shiftEndStandard: '10:00',
-            overtimeMinutes: 150,
-            reason: 'Emergency electrical generator repair & facilities check',
-            category: 'overtime_manual',
-            status: 'approved',
-            leaderNotes: 'Approved for Sunday emergency coverage',
-            decidedBy: 'Mohamed El-Sayed',
-          },
-        ],
-      };
-
-      saveSubmission(sample1);
-      saveSubmission(sample2);
-    }
-  }, []);
-
   // Modals state
   const [isStickyNotesOpen, setIsStickyNotesOpen] = useState(false);
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
+  const [duplicateWarningSubmission, setDuplicateWarningSubmission] = useState<OvertimeSubmission | null>(null);
 
   // Submissions count for badges
   const [allSubmissions, setAllSubmissions] = useState<OvertimeSubmission[]>(() => getSubmissions());
@@ -424,7 +374,7 @@ export default function App() {
     localStorage.removeItem('ledger_day_reasons');
     localStorage.removeItem('ledger_export_settings');
 
-    setIsDirectoryOpen(true);
+    showToast('Timesheet reset: ready for a new employee entry.');
   };
 
   const handleUpdateOverride = (date: string, category: DayCategory) => {
@@ -640,7 +590,7 @@ export default function App() {
     const cleanName = exportSettings.name.trim();
 
     if (!cleanId || cleanId.toLowerCase() === 'employee id' || cleanId.toLowerCase() === 'sap id') {
-      alert('⛔ CANNOT EXPORT EXCEL: SAP / Employee ID is strictly mandatory. Please fill in your valid SAP ID first.');
+      alert(t('val.cannot_export_sap'));
       const sapInput = document.querySelector('input[placeholder*="SAP"]') as HTMLInputElement;
       if (sapInput) {
         sapInput.focus();
@@ -650,7 +600,7 @@ export default function App() {
     }
 
     if (!cleanName || cleanName.toLowerCase() === 'employee name' || cleanName.toLowerCase() === 'no employee name set') {
-      alert('⛔ CANNOT EXPORT EXCEL: Full Employee Name is strictly mandatory. Please fill in your real name first.');
+      alert(t('val.cannot_export_name'));
       const nameInput = document.querySelector('input[placeholder*="Full name"]') as HTMLInputElement;
       if (nameInput) {
         nameInput.focus();
@@ -660,26 +610,21 @@ export default function App() {
     }
 
     if (overtimeList.length === 0) {
-      alert('No overtime days found in the current timesheet to export.');
+      alert(t('val.no_ot_export'));
       return;
     }
 
     if (missingReasonsList.length > 0) {
       alert(
-        `⚠️ CANNOT EXPORT EXCEL: Mandatory Reason Missing: ${missingReasonsList.length} overtime ${
-          missingReasonsList.length === 1 ? 'day is' : 'days are'
-        } missing a justification reason. Please complete all reasons first.`
+        t('val.missing_reasons_export')
       );
       setIsStickyNotesOpen(true);
       return;
     }
 
     if (unresolvedAbsentList.length > 0) {
-      const dates = unresolvedAbsentList.map((d) => d.row.date).join(', ');
       alert(
-        `⚠️ Cannot export Excel: There ${
-          unresolvedAbsentList.length === 1 ? 'is 1 unexcused absence day' : `are ${unresolvedAbsentList.length} unexcused absence days`
-        } (${dates}) that require a checkpoint or excuse to be checked first. Please check the absence checkpoint in the ledger table below.`
+        t('val.missing_absent_export')
       );
       const tableEl = document.getElementById('ledger-breakdown-section');
       if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -698,6 +643,64 @@ export default function App() {
   };
 
   // Submit to Team Leader workflow
+  const executeSubmissionSave = (isOverwriting: boolean = false) => {
+    const submissionItems = overtimeList.map((ot) => {
+      const isTue = weekdayOf(ot.row.date, weekendDays).label.toLowerCase() === 'tue';
+      const shiftEndStd = (rules.tuesdayEarlyShift && isTue) ? (rules.tuesdayShiftEnd || '16:00') : (exportSettings.shiftEnd || '17:00');
+      return {
+        date: ot.row.date,
+        dayOfWeek: weekdayOf(ot.row.date, weekendDays).label,
+        startTime: ot.row.start,
+        endTime: ot.row.end,
+        shiftEndStandard: shiftEndStd,
+        overtimeMinutes: ot.overtimeMin > 0 ? ot.overtimeMin : 60,
+        reason: dayReasons[ot.row.date] || ot.userReason || 'Project overtime',
+        category: overrides[ot.row.date] || 'overtime_manual',
+        status: 'pending' as const,
+      };
+    });
+
+    const targetId = isOverwriting && duplicateWarningSubmission
+      ? duplicateWarningSubmission.id
+      : `sub_${exportSettings.employeeId}_${Date.now()}`;
+
+    const cleanId = normalizeEmployeeId(exportSettings.employeeId);
+    const assignedTeam = getTeamForSapId(cleanId) || (exportSettings.teamId ? getTeamById(exportSettings.teamId) : undefined) || (currentUser.teamId ? getTeamById(currentUser.teamId) : undefined) || getTeams()[0];
+    
+    const teamLeaderName = assignedTeam?.leaderName || exportSettings.teamLeaderName || currentUser.teamLeaderName || 'Team Leader';
+    const teamName = assignedTeam?.name || exportSettings.teamName || currentUser.teamName || 'Operations Team Alpha';
+    const teamId = assignedTeam?.id || exportSettings.teamId || currentUser.teamId || 'team_1';
+    const teamLeaderSapId = assignedTeam?.leaderSapId || exportSettings.teamLeaderSapId || currentUser.teamLeaderSapId || '2001';
+
+    const newSubmission: OvertimeSubmission = {
+      id: targetId,
+      employeeId: cleanId,
+      employeeName: exportSettings.name.trim() || 'Staff Employee',
+      department: assignedTeam?.department || currentUser.department || 'Operations & Facilities',
+      teamId: teamId,
+      teamName: teamName,
+      teamLeaderSapId: teamLeaderSapId,
+      periodLabel: '16th – 15th Monthly Cycle',
+      totalOvertimeMinutes: totalOvertimeMins,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      items: submissionItems,
+    };
+
+    saveSubmission(newSubmission);
+    setDuplicateWarningSubmission(null);
+    showToast(
+      isOverwriting
+        ? `✓ Updated request for ${exportSettings.name} submitted to Team Leader: ${teamLeaderName} (${teamName})!`
+        : `✓ Submitted ${submissionItems.length} overtime day(s) for ${exportSettings.name} directly to Team Leader: ${teamLeaderName} (${teamName})!`
+    );
+    
+    // Only switch tabs if the current user has permission to review
+    if (currentUser.role !== 'employee') {
+      handleMainTabChange('team_leader_approvals');
+    }
+  };
+
   const handleSubmitToTeamLeader = () => {
     if (overtimeList.length === 0) {
       alert('No overtime days detected in this timesheet to submit.');
@@ -716,38 +719,24 @@ export default function App() {
       return;
     }
 
-    const submissionItems = overtimeList.map((ot) => {
-      const isTue = weekdayOf(ot.row.date, weekendDays).label.toLowerCase() === 'tue';
-      const shiftEndStd = (rules.tuesdayEarlyShift && isTue) ? (rules.tuesdayShiftEnd || '16:00') : (exportSettings.shiftEnd || '17:00');
-      return {
-        date: ot.row.date,
-        dayOfWeek: weekdayOf(ot.row.date, weekendDays).label,
-        startTime: ot.row.start,
-        endTime: ot.row.end,
-        shiftEndStandard: shiftEndStd,
-        overtimeMinutes: ot.overtimeMin > 0 ? ot.overtimeMin : 60,
-        reason: dayReasons[ot.row.date] || ot.userReason || 'Project overtime',
-        category: overrides[ot.row.date] || 'overtime_manual',
-        status: 'pending' as const,
-      };
+    // DUPLICATE SUBMISSION CHECK:
+    // Prevent duplicate requests and avoid conflicts for the team leader.
+    const cleanId = exportSettings.employeeId.trim();
+    const cleanName = exportSettings.name.trim().toLowerCase();
+    
+    const existing = allSubmissions.find((s) => {
+      const sameId = s.employeeId.trim() === cleanId;
+      const sameName = s.employeeName.trim().toLowerCase() === cleanName;
+      return sameId || sameName;
     });
 
-    const submissionId = `sub_${exportSettings.employeeId}_${Date.now()}`;
-    const newSubmission: OvertimeSubmission = {
-      id: submissionId,
-      employeeId: exportSettings.employeeId,
-      employeeName: exportSettings.name,
-      department: currentUser.department || 'General Staff',
-      periodLabel: '16th – 15th Monthly Cycle',
-      totalOvertimeMinutes: totalOvertimeMins,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-      items: submissionItems,
-    };
+    if (existing) {
+      // Prompt warning modal before overwriting to protect team leader queue from duplicates
+      setDuplicateWarningSubmission(existing);
+      return;
+    }
 
-    saveSubmission(newSubmission);
-    showToast(`✓ Submitted ${submissionItems.length} overtime days to Team Leader for approval!`);
-    setActiveTab('team_leader_approvals');
+    executeSubmissionSave(false);
   };
 
   const activeUserSubmission = allSubmissions.find(
@@ -755,6 +744,77 @@ export default function App() {
       (exportSettings.employeeId && s.employeeId === exportSettings.employeeId) ||
       (exportSettings.name && s.employeeName.toLowerCase() === exportSettings.name.trim().toLowerCase())
   );
+
+  const validateIdentity = (showAlert: boolean = true): boolean => {
+    const cleanId = exportSettings.employeeId.trim();
+    const cleanName = exportSettings.name.trim();
+
+    if (!cleanId) {
+      if (showAlert) {
+        alert(t('val.missing_identity'));
+        setActiveTab('employee_ledger');
+        setLedgerSubTab('data_entry');
+        setTimeout(() => {
+          const sapInput = document.querySelector('input[placeholder*="SAP"]') as HTMLInputElement;
+          if (sapInput) {
+            sapInput.focus();
+            sapInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+      return false;
+    }
+
+    if (!/^[0-9]+$/.test(cleanId)) {
+      if (showAlert) {
+        alert(t('val.invalid_sap_numeric'));
+        setActiveTab('employee_ledger');
+        setLedgerSubTab('data_entry');
+        setTimeout(() => {
+          const sapInput = document.querySelector('input[placeholder*="SAP"]') as HTMLInputElement;
+          if (sapInput) {
+            sapInput.focus();
+            sapInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+      return false;
+    }
+
+    if (!cleanName || cleanName.toLowerCase() === 'employee name' || cleanName.toLowerCase() === 'no employee name set' || cleanName.toLowerCase() === 'name') {
+      if (showAlert) {
+        alert(t('val.missing_identity'));
+        setActiveTab('employee_ledger');
+        setLedgerSubTab('data_entry');
+        setTimeout(() => {
+          const nameInput = document.querySelector('input[placeholder*="Name"], input[placeholder*="name"]') as HTMLInputElement;
+          if (nameInput) {
+            nameInput.focus();
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleMainTabChange = (newTab: ActiveAppTab) => {
+    if (newTab !== 'employee_ledger') {
+      if (!validateIdentity(true)) {
+        return;
+      }
+    }
+    setActiveTab(newTab);
+  };
+
+  const handleOpenDatabase = () => {
+    if (!validateIdentity(true)) {
+      return;
+    }
+    setIsDatabaseModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors py-6 px-4 sm:px-6 lg:px-8">
@@ -773,147 +833,222 @@ export default function App() {
           onToggleTheme={toggleTheme}
           onResetSession={handleResetSession}
           activeTab={activeTab}
-          onChangeTab={setActiveTab}
+          onChangeTab={handleMainTabChange}
           currentUser={currentUser}
           onSwitchUser={handleSwitchUser}
-          onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+          onOpenDatabaseModal={handleOpenDatabase}
           pendingApprovalsCount={pendingApprovalsCount}
         />
 
         {/* TAB 1: EMPLOYEE LEDGER & INPUT */}
-        {activeTab === 'employee_ledger' && (
-          <div className="space-y-6">
-            {/* Real-time Submission Status for Employee */}
-            <EmployeeSubmissionStatus
-              submission={activeUserSubmission}
-              employeeName={exportSettings.name}
-              employeeId={exportSettings.employeeId}
-              onNavigateToApprovals={() => setActiveTab('team_leader_approvals')}
-              onSubmitNew={handleSubmitToTeamLeader}
-              overtimeCount={counts.overtime}
-            />
+        {activeTab === 'employee_ledger' && (() => {
+          const cleanEmployeeId = normalizeEmployeeId(exportSettings.employeeId);
+          const assignedTeam = (exportSettings.teamId ? getTeamById(exportSettings.teamId) : undefined) || getTeamForSapId(cleanEmployeeId) || (currentUser.teamId ? getTeamById(currentUser.teamId) : undefined) || getTeams()[0];
+          const assignedTeamLeaderName = assignedTeam?.leaderName || exportSettings.teamLeaderName || currentUser.teamLeaderName || 'Unassigned (No Team Leader)';
+          const assignedTeamLeaderSapId = assignedTeam?.leaderSapId || exportSettings.teamLeaderSapId || currentUser.teamLeaderSapId || '';
+          const assignedTeamName = assignedTeam?.name || exportSettings.teamName || currentUser.teamName || 'Unassigned Team';
 
-            {/* Employee Hero */}
-            <EmployeeReportHero
-              employeeName={exportSettings.name}
-              employeeId={exportSettings.employeeId}
-              totalDays={parsedRows.length}
-              punctualityScore={punctualityScore}
-              totalOvertimeMins={totalOvertimeMins}
-              overtimeCount={counts.overtime}
-              lateCount={counts.late}
-              presentCount={counts.present}
-              excusedCount={counts.excused}
-              isUserDataComplete={isUserDataComplete}
-              missingDataErrors={missingDataErrors}
-              shiftEndTime={exportSettings.shiftEnd}
-              lateThresholdVal={rules.lateVal}
-              completionPercentage={completionPercentage}
-              completedRequiredCount={completedRequiredCount}
-              totalRequiredCount={totalRequiredCount}
-              onOpenDirectory={() => setIsDirectoryOpen(true)}
-              onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
-              onNavigateTab={setActiveTab}
-            />
+          const handleLedgerTabChange = (newTab: 'data_entry' | 'timesheet' | 'dashboard') => {
+            if (newTab !== 'data_entry') {
+              if (!validateIdentity(true)) {
+                return;
+              }
+            }
+            if (newTab === 'timesheet') {
+              if (parsedRows.length === 0) {
+                alert(t('val.missing_data_logs'));
+                return;
+              }
+            }
+            setLedgerSubTab(newTab);
+          };
 
-            {/* Late Arrival Alert Banner */}
-            {lateDays.length > 0 && (
-              <LateAlertBanner
-                lateDays={lateDays}
-                lateThresholdVal={rules.lateVal}
-                permissionsFiled={permissionsFiled}
-                onTogglePermission={handleTogglePermission}
-                employeeName={exportSettings.name}
-                employeeId={exportSettings.employeeId}
-              />
-            )}
+          return (
+            <div className="space-y-6">
+              {/* Employee Ledger Tabs */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-1.5 bg-muted/40 rounded-2xl border border-border shadow-xs">
+                <button
+                  onClick={() => handleLedgerTabChange('data_entry')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all whitespace-nowrap ${ledgerSubTab === 'data_entry' ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md border border-indigo-700' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}
+                >
+                  <Keyboard className="w-4 h-4" />
+                  <span>{t('ledger.data_entry')}</span>
+                </button>
+                <button
+                  onClick={() => handleLedgerTabChange('timesheet')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all whitespace-nowrap ${ledgerSubTab === 'timesheet' ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md border border-amber-700' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  <span>{t('ledger.timesheet')}</span>
+                </button>
+                <button
+                  onClick={() => handleLedgerTabChange('dashboard')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all whitespace-nowrap ${ledgerSubTab === 'dashboard' ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md border border-emerald-700' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>{t('ledger.dashboard')}</span>
+                </button>
+              </div>
 
-            {/* Overtime & Attendance Rules Section */}
-            <RulesCard
-              rules={rules}
-              onChangeRules={setRules}
-            />
+              {ledgerSubTab === 'dashboard' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <EmployeeSubmissionStatus
+                    submission={activeUserSubmission}
+                    employeeName={exportSettings.name}
+                    employeeId={exportSettings.employeeId}
+                    onNavigateToApprovals={() => handleMainTabChange('team_leader_approvals')}
+                    onSubmitNew={handleSubmitToTeamLeader}
+                    onExport={handleExportOvertime}
+                    overtimeCount={counts.overtime}
+                    currentUserRole={currentUser.role}
+                    assignedTeamName={assignedTeamName}
+                    assignedTeamLeaderName={assignedTeamLeaderName}
+                    assignedTeamLeaderSapId={assignedTeamLeaderSapId}
+                  />
 
-            {/* Export & Submit to Team Leader Card */}
-            <ExportCard
-              exportSettings={exportSettings}
-              onChangeSettings={handleChangeExportSettings}
-              onExport={handleExportOvertime}
-              onSubmitToTeamLeader={handleSubmitToTeamLeader}
-              onNavigateTab={setActiveTab}
-              overtimeCount={counts.overtime}
-              missingReasonsCount={missingReasonsList.length}
-              unresolvedAbsencesCount={unresolvedAbsentList.length}
-              onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
-              onOpenDirectory={() => setIsDirectoryOpen(true)}
-            />
+                  {activeUserSubmission && activeUserSubmission.items && activeUserSubmission.items.length > 0 && (
+                    <OvertimeLedgerChart
+                      submission={activeUserSubmission}
+                      employeeName={exportSettings.name}
+                      employeeId={exportSettings.employeeId}
+                      currentUser={currentUser}
+                      onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
+                      onSubmitNew={handleSubmitToTeamLeader}
+                    />
+                  )}
 
-            {/* Raw Punch Input Textarea */}
-            <RawInputCard
-              rawInput={rawInput}
-              onChangeInput={setRawInput}
-              onRun={() => {
-                const tableEl = document.getElementById('ledger-breakdown-section');
-                if (tableEl) {
-                  tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-              }}
-            />
+                  <EmployeeReportHero
+                    employeeName={exportSettings.name}
+                    employeeId={exportSettings.employeeId}
+                    totalDays={parsedRows.length}
+                    punctualityScore={punctualityScore}
+                    totalOvertimeMins={totalOvertimeMins}
+                    overtimeCount={counts.overtime}
+                    lateCount={counts.late}
+                    presentCount={counts.present}
+                    excusedCount={counts.excused}
+                    isUserDataComplete={isUserDataComplete}
+                    missingDataErrors={missingDataErrors}
+                    shiftEndTime={exportSettings.shiftEnd}
+                    lateThresholdVal={rules.lateVal}
+                    completionPercentage={completionPercentage}
+                    completedRequiredCount={completedRequiredCount}
+                    totalRequiredCount={totalRequiredCount}
+                    assignedTeamName={assignedTeamName}
+                    assignedTeamLeaderName={assignedTeamLeaderName}
+                    assignedTeamLeaderSapId={assignedTeamLeaderSapId}
+                    onOpenDirectory={() => setIsDirectoryOpen(true)}
+                    onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
+                    onNavigateTab={handleMainTabChange}
+                  />
 
-            {/* Summary Statistics Card */}
-            <div id="ledger-breakdown-section">
-              <SummaryCard
-                totalDays={parsedRows.length}
-                counts={counts}
-                totalOvertimeMins={totalOvertimeMins}
-                breakdown={breakdown}
-                weekendDays={weekendDays}
-                onToggleWeekendDay={handleToggleWeekendDay}
-                onSetWeekendDays={handleSetWeekendDays}
-              />
+                  {lateDays.length > 0 && (
+                    <LateAlertBanner
+                      lateDays={lateDays}
+                      lateThresholdVal={rules.lateVal}
+                      permissionsFiled={permissionsFiled}
+                      onTogglePermission={handleTogglePermission}
+                      employeeName={exportSettings.name}
+                      employeeId={exportSettings.employeeId}
+                    />
+                  )}
+                </div>
+              )}
+
+              {ledgerSubTab === 'timesheet' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500" id="ledger-breakdown-section">
+                  <SummaryCard
+                    totalDays={parsedRows.length}
+                    counts={counts}
+                    totalOvertimeMins={totalOvertimeMins}
+                    breakdown={breakdown}
+                    weekendDays={weekendDays}
+                    onToggleWeekendDay={handleToggleWeekendDay}
+                    onSetWeekendDays={handleSetWeekendDays}
+                  />
+
+                  <DayTable
+                    classifiedList={classifiedList}
+                    overrides={overrides}
+                    onUpdateOverride={handleUpdateOverride}
+                    rules={rules}
+                    permissionsFiled={permissionsFiled}
+                    onTogglePermission={handleTogglePermission}
+                    dayReasons={dayReasons}
+                    onUpdateReason={handleUpdateReason}
+                    weekendDays={weekendDays}
+                    absenceCheckpoints={absenceCheckpoints}
+                    onToggleAbsenceCheckpoint={handleToggleAbsenceCheckpoint}
+                    activeSubmission={activeUserSubmission}
+                  />
+                </div>
+              )}
+
+              {ledgerSubTab === 'data_entry' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <RawInputCard
+                    rawInput={rawInput}
+                    onChangeInput={setRawInput}
+                    onRun={() => {
+                      handleLedgerTabChange('timesheet');
+                      setTimeout(() => {
+                        const tableEl = document.getElementById('ledger-breakdown-section');
+                        if (tableEl) {
+                          tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }, 100);
+                    }}
+                  />
+
+                  <RulesCard
+                    rules={rules}
+                    onChangeRules={setRules}
+                  />
+
+                  <ExportCard
+                    exportSettings={exportSettings}
+                    onChangeSettings={handleChangeExportSettings}
+                    onExport={handleExportOvertime}
+                    onSubmitToTeamLeader={handleSubmitToTeamLeader}
+                    onNavigateTab={handleMainTabChange}
+                    overtimeCount={counts.overtime}
+                    missingReasonsCount={missingReasonsList.length}
+                    unresolvedAbsencesCount={unresolvedAbsentList.length}
+                    onOpenStickyNotes={() => setIsStickyNotesOpen(true)}
+                    onOpenDirectory={() => setIsDirectoryOpen(true)}
+                    currentUser={currentUser}
+                  />
+                </div>
+              )}
             </div>
-
-            {/* Detailed Day by Day Table */}
-            <DayTable
-              classifiedList={classifiedList}
-              overrides={overrides}
-              onUpdateOverride={handleUpdateOverride}
-              rules={rules}
-              permissionsFiled={permissionsFiled}
-              onTogglePermission={handleTogglePermission}
-              dayReasons={dayReasons}
-              onUpdateReason={handleUpdateReason}
-              weekendDays={weekendDays}
-              absenceCheckpoints={absenceCheckpoints}
-              onToggleAbsenceCheckpoint={handleToggleAbsenceCheckpoint}
-            />
-          </div>
-        )}
+          );
+      })()}
 
         {/* TAB 2: TEAM LEADER APPROVALS */}
         {activeTab === 'team_leader_approvals' && (
-          <TeamLeaderApprovals currentUser={currentUser} onNavigateTab={setActiveTab} />
+          <TeamLeaderApprovals currentUser={currentUser} onNavigateTab={handleMainTabChange} />
         )}
 
         {/* TAB 3: MANAGER OVERVIEW & MATRIX */}
         {activeTab === 'manager_overview' && (
-          <ManagerOverview currentUser={currentUser} onNavigateTab={setActiveTab} />
+          <ManagerOverview currentUser={currentUser} onNavigateTab={handleMainTabChange} />
         )}
 
         {/* Footer Branding & Watermark */}
         <footer className="mt-12 mb-20 text-center text-[11px] font-mono text-muted-foreground/70 flex items-center justify-center gap-2 flex-wrap">
-          <span>Wadi Degla Clubs Attendance &amp; Overtime System</span>
+          <span>{t('footer.text')}</span>
           <span className="text-border">•</span>
-          <span className="text-amber-400 font-bold uppercase tracking-wider">Made by David Kalad</span>
+          <span className="text-amber-400 font-bold uppercase tracking-wider">{t('brand.made_by')}</span>
         </footer>
       </div>
 
       {/* Floating Bottom Navigation Dock - Pinned and Always Accessible */}
       <FloatingPortalDock
         activeTab={activeTab}
-        onChangeTab={setActiveTab}
-        onOpenDatabase={() => setIsDatabaseModalOpen(true)}
+        onChangeTab={handleMainTabChange}
+        onOpenDatabase={handleOpenDatabase}
         pendingApprovalsCount={pendingApprovalsCount}
+        currentUser={currentUser}
       />
 
       {/* Staff Directory Modal */}
@@ -942,6 +1077,25 @@ export default function App() {
         currentUser={currentUser}
         onUserSelect={handleSwitchUser}
       />
+
+      {/* Duplicate Submission Warning Modal */}
+      {duplicateWarningSubmission && (
+        <DuplicateSubmissionModal
+          isOpen={Boolean(duplicateWarningSubmission)}
+          onClose={() => setDuplicateWarningSubmission(null)}
+          onConfirmOverwrite={() => executeSubmissionSave(true)}
+          existingSubmission={duplicateWarningSubmission}
+          newOvertimeCount={counts.overtime}
+          newTotalOvertimeMinutes={totalOvertimeMins}
+          employeeName={exportSettings.name}
+          employeeId={exportSettings.employeeId}
+          onNavigateToLeaderTab={() => {
+            setDuplicateWarningSubmission(null);
+            handleMainTabChange('team_leader_approvals');
+          }}
+          canViewLeaderTab={currentUser.role !== 'employee'}
+        />
+      )}
     </div>
   );
 }

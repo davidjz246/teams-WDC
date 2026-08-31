@@ -4,6 +4,17 @@ export type PermissionStatus = 'not_filed' | 'filed';
 
 export type UserRole = 'employee' | 'team_leader' | 'manager' | 'admin';
 
+export interface TeamInfo {
+  id: string;
+  name: string;
+  leaderSapId: string;
+  leaderName: string;
+  department: string;
+  memberSapIds: string[];
+  managerSapId?: string;
+  managerName?: string;
+}
+
 export interface UserProfile {
   id: string;
   sapId: string;
@@ -13,6 +24,22 @@ export interface UserProfile {
   department: string;
   avatar?: string;
   title: string;
+  teamId?: string;
+  teamName?: string;
+  teamLeaderSapId?: string;
+  teamLeaderName?: string;
+  managerSapId?: string;
+  managerName?: string;
+}
+
+export interface EmployeeRecord {
+  id: string; // Numeric SAP ID
+  name: string;
+  department?: string;
+  teamId?: string;
+  teamName?: string;
+  teamLeaderSapId?: string;
+  teamLeaderName?: string;
 }
 
 export interface PunchRow {
@@ -35,8 +62,12 @@ export interface RuleSettings {
 
 export interface ExportSettings {
   name: string;
-  employeeId: string;
+  employeeId: string; // Must be numeric SAP ID
   shiftEnd: string;
+  teamId?: string;
+  teamName?: string;
+  teamLeaderSapId?: string;
+  teamLeaderName?: string;
 }
 
 export type DayStatus = 'present' | 'overtime' | 'absent' | 'missing' | 'excused';
@@ -77,9 +108,12 @@ export interface OvertimeDayItem {
 
 export interface OvertimeSubmission {
   id: string;
-  employeeId: string;
+  employeeId: string; // Numeric SAP ID
   employeeName: string;
   department: string;
+  teamId?: string;
+  teamName?: string;
+  teamLeaderSapId?: string;
   periodLabel: string; // e.g. "16 Jul 2026 – 15 Aug 2026"
   submittedAt: string;
   status: ApprovalStatus;
@@ -94,3 +128,4 @@ export interface OvertimeSubmission {
 export type ActiveAppTab = 'employee_ledger' | 'team_leader_approvals' | 'manager_overview' | 'database_config';
 
 export type ThemeMode = 'dark' | 'light';
+export type Language = 'en' | 'ar';

@@ -314,7 +314,7 @@ export function exportOvertimeToExcel(
     };
   }
 
-  const headers = ['Name', 'Employee ID', 'Date', 'Day', 'From', 'To', 'Total', 'Reason', 'Shift Note'];
+  const headers = ['Name', 'Employee ID', 'Date', 'Day', 'From', 'To', 'Total', 'Reason'];
   const dataRows = overtimeDays.map((c) => {
     const reason = (dayReasons[c.row.date] || c.userReason || '').trim();
     const isManualOT = overrides[c.row.date] === 'overtime_manual' && c.overtimeMin === 0;
@@ -323,7 +323,6 @@ export function exportOvertimeToExcel(
     const { dayIndex } = weekdayOf(c.row.date, weekendDays);
     const isTue = dayIndex === 2;
     const fromTime = isTue ? '04:00 PM' : to12Hour(shiftEnd + ':00');
-    const shiftNote = isTue ? 'Tuesday 4:00 PM Early Departure Rule' : 'Standard Shift';
 
     return [
       name,
@@ -334,7 +333,6 @@ export function exportOvertimeToExcel(
       toTime,
       toHM(otMins),
       reason,
-      shiftNote,
     ];
   });
 
@@ -348,12 +346,13 @@ export function exportOvertimeToExcel(
     { wch: 14 },
     { wch: 12 },
     { wch: 45 },
-    { wch: 30 },
   ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Overtime');
-  XLSX.writeFile(wb, `overtime_log_${employeeId || 'employee'}.xlsx`);
+  
+  const safeName = name ? name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'employee';
+  XLSX.writeFile(wb, `overtime_log_${safeName}_${employeeId || 'unknown'}.xlsx`);
   return { success: true, missingDates: [] };
 }
 

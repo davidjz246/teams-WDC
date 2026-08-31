@@ -1,7 +1,8 @@
 import React from 'react';
-import { Clock, CheckCircle, AlertTriangle, ArrowRight, UserCheck, ShieldCheck, RefreshCw } from 'lucide-react';
-import { OvertimeSubmission } from '../types';
+import { Clock, CheckCircle, AlertTriangle, ArrowRight, UserCheck, ShieldCheck, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { OvertimeSubmission, UserRole } from '../types';
 import { toHM } from '../utils/parser';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface EmployeeSubmissionStatusProps {
   submission: OvertimeSubmission | undefined;
@@ -9,7 +10,12 @@ interface EmployeeSubmissionStatusProps {
   employeeId: string;
   onNavigateToApprovals: () => void;
   onSubmitNew: () => void;
+  onExport?: () => void;
   overtimeCount: number;
+  currentUserRole?: UserRole;
+  assignedTeamName?: string;
+  assignedTeamLeaderName?: string;
+  assignedTeamLeaderSapId?: string;
 }
 
 export const EmployeeSubmissionStatus: React.FC<EmployeeSubmissionStatusProps> = ({
@@ -18,8 +24,18 @@ export const EmployeeSubmissionStatus: React.FC<EmployeeSubmissionStatusProps> =
   employeeId,
   onNavigateToApprovals,
   onSubmitNew,
+  onExport,
   overtimeCount,
+  currentUserRole = 'employee',
+  assignedTeamName,
+  assignedTeamLeaderName,
+  assignedTeamLeaderSapId,
 }) => {
+  const { t } = useLanguage();
+  const leaderName = assignedTeamLeaderName || submission?.reviewedBy || t('role.team_leader');
+  const leaderSap = assignedTeamLeaderSapId || submission?.teamLeaderSapId || '2001';
+  const teamName = assignedTeamName || submission?.teamName || 'Operations Alpha';
+
   if (!submission) {
     return (
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 shadow-xs mb-6">
@@ -29,32 +45,48 @@ export const EmployeeSubmissionStatus: React.FC<EmployeeSubmissionStatusProps> =
               <Clock className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-                  Timesheet Submission Status
+                  {t('sub.title')}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-muted text-muted-foreground border border-border">
-                  Draft (Not Submitted)
+                  {t('sub.draft')}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <ShieldCheck className="w-3 h-3 text-amber-400" />
+                  <span>{t('export.approver')} {leaderName} (SAP #{leaderSap})</span>
                 </span>
               </div>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
+              <p className="text-sm font-semibold text-foreground mt-1">
                 {overtimeCount > 0
-                  ? `You have ${overtimeCount} overtime ${overtimeCount === 1 ? 'day' : 'days'} ready to submit to your Team Leader.`
-                  : 'Punches loaded in draft mode. Fill details and submit to Team Leader for approval.'}
+                  ? t('sub.draft_desc_ot').replace('{count}', String(overtimeCount)).replace('{leader}', leaderName).replace('{team}', teamName)
+                  : t('sub.draft_desc_none').replace('{leader}', leaderName)}
               </p>
             </div>
           </div>
 
-          {overtimeCount > 0 && (
-            <button
-              type="button"
-              onClick={onSubmitNew}
-              className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0 whitespace-nowrap"
-            >
-              <span>Submit to Team Leader</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
+            {onExport && (
+              <button
+                type="button"
+                onClick={onExport}
+                className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold bg-card border border-border hover:bg-muted text-foreground shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0 whitespace-nowrap"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                <span>{t('export.export_btn')}</span>
+              </button>
+            )}
+            {overtimeCount > 0 && (
+              <button
+                type="button"
+                onClick={onSubmitNew}
+                className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0 whitespace-nowrap"
+              >
+                <span>{t('sub.submit_to')} {leaderName}</span>
+                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -97,7 +129,7 @@ export const EmployeeSubmissionStatus: React.FC<EmployeeSubmissionStatusProps> =
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-                Official Submission Request
+                {t('sub.req_title')}
               </span>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold tracking-wide uppercase ${
@@ -109,61 +141,89 @@ export const EmployeeSubmissionStatus: React.FC<EmployeeSubmissionStatusProps> =
                 }`}
               >
                 {isPending
-                  ? '⏳ WAITING FOR TEAM LEADER APPROVAL'
+                  ? `⏳ ${t('sub.waiting_approval')} ${leaderName.toUpperCase()}`
                   : isApproved
-                  ? '✓ APPROVED BY TEAM LEADER'
-                  : '❌ CHANGES REQUESTED BY TEAM LEADER'}
+                  ? `✓ ${t('sub.approved_by')} ${leaderName.toUpperCase()}`
+                  : `❌ ${t('sub.rejected_by')} ${leaderName.toUpperCase()}`}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-background/80 text-foreground border border-border">
+                <UserCheck className="w-3 h-3 text-amber-500" />
+                <span>{t('export.approver')} {leaderName} (SAP #{leaderSap})</span>
               </span>
             </div>
 
             <h3 className="text-base sm:text-lg font-bold text-foreground mt-1">
               {isPending && (
                 <span>
-                  Your overtime request for <span className="underline decoration-amber-500">{submission.employeeName}</span> has been sent to the Team Leader.
+                  {t('sub.routed_msg').replace('{name}', submission.employeeName).replace('{leader}', leaderName).replace('{team}', teamName)}
                 </span>
               )}
               {isApproved && (
                 <span className="text-emerald-600 dark:text-emerald-400">
-                  Overtime claim approved for payroll processing ({toHM(submission.totalOvertimeMinutes)})
+                  {t('sub.approved_msg').replace('{leader}', leaderName).replace('{time}', toHM(submission.totalOvertimeMinutes))}
                 </span>
               )}
               {isRejected && (
                 <span className="text-rose-600 dark:text-rose-400">
-                  Review comments: {submission.leaderComments || 'Please adjust hours or justifications'}
+                  {t('sub.feedback_from').replace('{leader}', leaderName)}: {submission.leaderComments || t('sub.feedback_fallback')}
                 </span>
               )}
             </h3>
 
             <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground mt-1 flex-wrap">
-              <span>Period: <strong>{submission.periodLabel}</strong></span>
+              <span>{t('sub.period')} <strong>{submission.periodLabel}</strong></span>
               <span>•</span>
-              <span>Total Overtime: <strong className="text-foreground">{toHM(submission.totalOvertimeMinutes)}</strong> ({submission.items.length} days)</span>
+              <span>{t('sub.team')} <strong className="text-foreground">{teamName}</strong></span>
               <span>•</span>
-              <span>Submitted: {new Date(submission.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(submission.submittedAt).toLocaleDateString()}</span>
+              <span>{t('sub.total_ot')} <strong className="text-foreground">{toHM(submission.totalOvertimeMinutes)}</strong> ({submission.items.length} {t('rules.hrs')})</span>
+              <span>•</span>
+              <span>{t('sub.submitted')} {new Date(submission.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(submission.submittedAt).toLocaleDateString()}</span>
               {submission.reviewedBy && (
                 <>
                   <span>•</span>
-                  <span>Reviewed by: <strong className="text-foreground">{submission.reviewedBy}</strong></span>
+                  <span>{t('sub.reviewed_by')} <strong className="text-foreground">{submission.reviewedBy}</strong></span>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Quick Navigate Button to Tab 2 */}
-        <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
+          {onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold bg-card border border-border hover:bg-muted text-foreground shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0 whitespace-nowrap"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span>{t('export.export_btn')}</span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={onNavigateToApprovals}
-            className={`px-4 py-2.5 rounded-xl text-xs font-mono font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 whitespace-nowrap ${
-              isPending
-                ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 ring-2 ring-amber-500/40'
-                : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-            }`}
+            onClick={onSubmitNew}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold bg-muted hover:bg-accent text-foreground border border-border flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 whitespace-nowrap"
+            title="Update or resubmit changes with duplicate prevention check"
           >
-            <span>👉 Open in Tab 2 (Team Leader View)</span>
-            <ArrowRight className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+            <span>{t('sub.update_resubmit')}</span>
           </button>
+
+          {currentUserRole !== 'employee' && (
+            <button
+              type="button"
+              onClick={onNavigateToApprovals}
+              className={`px-4 py-2.5 rounded-xl text-xs font-mono font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 whitespace-nowrap ${
+                isPending
+                  ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 ring-2 ring-amber-500/40'
+                  : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+              }`}
+            >
+              <span>{t('portal.open_tl')}</span>
+              <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+            </button>
+          )}
         </div>
       </div>
     </div>
