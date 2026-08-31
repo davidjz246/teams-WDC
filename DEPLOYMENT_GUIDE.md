@@ -1,21 +1,37 @@
 # Production Deployment Guide: Wadi Degla Clubs Attendance & Overtime System
 
-This project is fully built and ready for production deployment. The compiled files are inside the `/dist` directory.
-
-## What is inside `/dist`?
-- `index.html` — The main entry point
-- `assets/` — Bundled JavaScript (`app-bundle.js`), CSS (`index.css`), and images
+This project is fully built and ready for production deployment. The compiled files are inside the `/public_dist` and `/dist` directories.
 
 ---
 
-## 1. How to Deploy to XAMPP (Local Web Server)
-1. Open your XAMPP installation directory: `C:\xampp\htdocs\`
-2. Create a new folder, for example `attendance`: `C:\xampp\htdocs\attendance`
-3. Copy all files and folders from the `dist` directory into `C:\xampp\htdocs\attendance\`:
+## ⚡ Option 1: Automatic 1-Click Installer (Windows / XAMPP)
+
+1. Double-click **`install-to-xampp.bat`** in the project folder.
+2. It automatically creates `C:\xampp\htdocs\attendance\` and copies all necessary production files (`index.html` + `assets/`).
+3. Start **Apache** in your XAMPP Control Panel.
+4. Open your browser and go to: **`http://localhost/attendance/`**
+
+---
+
+## 📂 Option 2: Manual Installation to XAMPP htdocs
+
+1. Open your XAMPP folder: `C:\xampp\htdocs\`
+2. Create a folder named **`attendance`**: `C:\xampp\htdocs\attendance\`
+3. Copy all files from **`public_dist/`** into `C:\xampp\htdocs\attendance/`:
    - `C:\xampp\htdocs\attendance\index.html`
-   - `C:\xampp\htdocs\attendance\assets\...`
-4. Start Apache in the XAMPP Control Panel.
-5. Open your browser and go to: `http://localhost/attendance/`
+   - `C:\xampp\htdocs\attendance\assets\app-bundle.js`
+   - `C:\xampp\htdocs\attendance\assets\index.css`
+   - `C:\xampp\htdocs\attendance\assets\*.jpg`
+4. Start **Apache** in the XAMPP Control Panel.
+5. Open your browser and navigate to: **`http://localhost/attendance/`**
+
+---
+
+## 🚀 Option 3: Instant Local Server without XAMPP
+
+Double-click **`start.bat`** or **`AttendanceTracker-App.bat`** in this folder:
+- If you have Node.js, Python, or PHP installed, it automatically serves the app on `http://localhost:3000`.
+- If no server is installed, it opens Edge/Chrome in dedicated App Mode with local file access enabled.
 
 ---
 
